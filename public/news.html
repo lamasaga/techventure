@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0;url=/screen.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>正在跳转到会场大屏…</title>
+    <link rel="stylesheet" href="/common.css" />
+  </head>
+  <body class="tv-body" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px">
+    <div class="card" style="max-width: 420px; text-align: center">
+      <h1 class="play-hero-title" style="font-size: 1.15rem; margin-top: 0">新闻滚屏已合并至会场大屏</h1>
+      <p class="muted">主屏会轮流展示三城饼图与累计榜单，底部保留快讯。若未自动跳转，请<a href="/screen.html">点击此处</a>。</p>
+    </div>
+    <script>
+      try {
+        location.replace("/screen.html");
+      } catch (e) {}
+    </script>
+  </body>
+</html>

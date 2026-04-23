@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TechVenture · 管理端</title>
+    <meta name="theme-color" content="#0a0e14" />
+    <link rel="stylesheet" href="/common.css" />
+  </head>
+  <body class="tv-body tv-body--admin">
+    <header class="tv-topbar" role="banner">
+      <div class="tv-brand">
+        <span class="tv-brand-mark" aria-hidden="true"></span>
+        <div class="tv-brand-text">
+          <span class="tv-brand-name">TechVenture · 创想大赢家</span>
+          <span class="tv-brand-sub">管理控制台 · v6.0</span>
+        </div>
+      </div>
+      <div class="tv-topbar-actions"><span class="tv-pill">主持 / 控台</span></div>
+    </header>
+
+    <div class="page page--admin">
+      <div class="card" id="loginCard">
+        <h1>管理登录</h1>
+        <p class="muted">口令由环境变量 TV_ADMIN_PASSWORD 配置，默认 admin。</p>
+        <label>管理员口令</label>
+        <input type="password" id="adminPw" />
+        <p class="err" id="loginErr"></p>
+        <button type="button" id="btnAdminLogin">登录</button>
+      </div>
+
+      <div id="main" style="display: none">
+        <div class="admin-grid">
+          <aside class="admin-col admin-col-left">
+            <div class="card card--compact">
+              <h1>队伍管理</h1>
+              <p class="muted">
+                队伍以<strong>加权总分</strong>排序（同排行榜）。添加后选手使用手机在参赛端自行选择<strong>主场城市与路线</strong>（R1）并填写队伍名和产品名。
+              </p>
+              <div class="row">
+                <div><label>编号</label><input type="text" id="nt_code" /></div>
+                <div><label>口令（可空）</label><input type="text" id="nt_pin" /></div>
+              </div>
+              <div class="row">
+                <div>
+                  <label>队名</label>
+                  <input type="text" id="nt_name" placeholder="建议填写，便于新闻与榜单展示" />
+                </div>
+                <div>
+                  <label>产品名</label>
+                  <input type="text" id="nt_product" placeholder="建议填写，便于新闻引用" />
+                </div>
+              </div>
+              <div class="admin-toolbar">
+                <button type="button" id="btnAddTeam">添加队伍</button>
+              </div>
+              <p class="err" id="teamErr"></p>
+              <div style="overflow-x: auto; margin-top: 6px">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>编号</th>
+                      <th>队名</th>
+                      <th>产品名</th>
+                      <th>口令</th>
+                      <th>主场</th>
+                      <th>开通城</th>
+                      <th>资金</th>
+                      <th>+追加</th>
+                      <th></th>
+                      <th></th>
+                      <th>T</th>
+                      <th>F̄</th>
+                      <th>S̄</th>
+                      <th>加权分</th>
+                      <th>上轮</th>
+                    </tr>
+                  </thead>
+                  <tbody id="teamRows"></tbody>
+                </table>
+              </div>
+            </div>
+          </aside>
+
+          <div class="admin-col admin-col-right">
+            <div class="card card--compact">
+              <h1>现场入口</h1>
+              <p class="muted">同网设备扫码或手动输入以下地址。</p>
+              <p style="word-break: break-all; font-size: 12px; margin: 4px 0">
+                <strong id="playUrl">—</strong>
+              </p>
+              <div class="admin-toolbar">
+                <a class="btn secondary" href="/play.html" target="_blank">参赛页</a>
+                <a class="btn secondary" href="/judge.html" target="_blank">投资人席</a>
+                <a class="btn secondary" href="/screen.html" target="_blank">会场大屏</a>
+              </div>
+            </div>
+
+            <div class="card card--compact">
+              <h1>轮次与结算</h1>
+              <p class="muted">
+                顺序：R1 → R2 → R3（可选突发事件）→ R4。每轮：<strong>开放提交</strong> → 队伍填表 → <strong>执行结算</strong>。
+              </p>
+              <div id="roundStatusBar" class="round-status-bar">
+                <strong id="roundStatusTitle">—</strong>
+                <div class="admin-evt" id="adminEvt" style="display:none">R3 突发事件：—</div>
+                <div class="admin-timer" id="adminTimer" style="display:none">本轮倒计时：—</div>
+                <p class="muted" style="margin: 4px 0 0 0" id="roundStatusHint">—</p>
+              </div>
+              <div class="admin-toolbar" style="margin-top: 10px">
+                <button type="button" id="btnOpenRound">开放本轮</button>
+                <button type="button" id="btnSettle">执行结算</button>
+              </div>
+              <p class="err" id="roundErr"></p>
+              <div style="overflow-x: auto; margin-top: 6px">
+                <table>
+                  <thead>
+                    <tr><th>轮</th><th>状态</th><th>事件</th><th>上限×</th></tr>
+                  </thead>
+                  <tbody id="roundRows"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card card--compact" style="border-color: color-mix(in srgb, var(--tv-danger) 45%, var(--tv-border))">
+              <h1>重新开始一局</h1>
+              <p class="muted">清空轮次与提交记录；默认保留队伍并重置资金与属性。勾选可删全部队伍。</p>
+              <div class="row" style="flex-wrap: wrap; align-items: center">
+                <div>
+                  <label>重开启动资金</label>
+                  <input type="number" id="restartBudget" min="0" value="100" style="width: 6.5rem" />
+                </div>
+                <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; margin-top: 8px">
+                  <input type="checkbox" id="restartRemoveTeams" /> 删除全部队伍
+                </label>
+              </div>
+              <div class="admin-toolbar" style="margin-top: 8px">
+                <button type="button" id="btnRestartActivity">重新开始一局</button>
+              </div>
+              <p class="err" id="restartErr"></p>
+            </div>
+
+            <div class="admin-footer-actions">
+              <button type="button" class="secondary" id="btnLogout">退出管理</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const CITY_IDS = ["南京", "合肥", "杭州"];
+      let META = null;
+      let ADMIN_TIMER_END_MS = null;
+      let ADMIN_TIMER_CLIENT_ANCHOR = 0;
+      let ADMIN_TIMER_SERVER_AT = 0;
+      let ADMIN_TICK = null;
+      let ADMIN_POLL = null;
+
+      async function api(path, opt) {
+        const r = await fetch("/api" + path, {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          ...opt,
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || r.statusText);
+        return data;
+      }
+
+      function playBase() {
+        const { protocol, host } = window.location;
+        return protocol + "//" + host;
+      }
+
+      function escHtml(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function avg(obj) {
+        const arr = CITY_IDS.map((c) => obj[c] ?? 0);
+        return arr.reduce((a, b) => a + b, 0) / arr.length;
+      }
+
+      function renderEventHint(st) {
+        const el = $("adminEvt");
+        const r3 = (st.rounds || []).find((x) => x.round_no === 3);
+        if (!r3) { el.style.display = "none"; return; }
+        const e = (META?.events || []).find((x) => x.id === r3.event_id);
+        if (!e || r3.event_id === "none") { el.style.display = "none"; return; }
+        el.style.display = "block";
+        el.textContent = `R3 突发事件：${e.label}`;
+        el.title = e.desc || "";
+      }
+
+      function applyRoundControl(st) {
+        const rc = st.roundControl;
+        if (!rc) {
+          $("roundStatusTitle").textContent = "轮次状态";
+          $("roundStatusHint").textContent = "无法读取顺序控制信息，请刷新页面。";
+          return;
+        }
+        const f = rc.focus;
+        if (rc.step === "all_done") $("roundStatusTitle").textContent = "全部 4 轮已结算";
+        else if (rc.step === "open_collecting" && f) $("roundStatusTitle").textContent = `当前：第 ${f.round_no} 轮（已开放，等待结算）`;
+        else if (rc.step === "before_open" && f) $("roundStatusTitle").textContent = `当前：第 ${f.round_no} 轮（待开放）`;
+        else $("roundStatusTitle").textContent = "轮次状态";
+        $("roundStatusHint").textContent = rc.hint;
+        $("btnOpenRound").disabled = !rc.canOpen;
+        $("btnSettle").disabled = !rc.canSettle;
+      }
+
+      function fmtMMSS(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        const m = Math.floor(s / 60);
+        const ss = String(s % 60).padStart(2, "0");
+        return `${m}:${ss}`;
+      }
+
+      function tickAdminTimer() {
+        const el = $("adminTimer");
+        if (!ADMIN_TIMER_END_MS) {
+          el.style.display = "none";
+          return;
+        }
+        const serverNow = ADMIN_TIMER_SERVER_AT + (Date.now() - ADMIN_TIMER_CLIENT_ANCHOR);
+        const remain = Math.max(0, ADMIN_TIMER_END_MS - serverNow);
+        el.style.display = "block";
+        el.textContent = `本轮倒计时：${fmtMMSS(remain)}`;
+        el.dataset.danger = remain <= 30000 ? "1" : "0";
+      }
+
+      function bindPatchOnce() {
+        const tb = $("teamRows");
+        if (tb.dataset.bound === "1") return;
+        tb.dataset.bound = "1";
+        tb.addEventListener("click", async (ev) => {
+          const btnDel = ev.target.closest(".btn-del");
+          if (btnDel) {
+            const tr = btnDel.closest("tr");
+            const tid = tr?.dataset?.teamId;
+            const code = tr?.dataset?.teamCode;
+            if (!tid) return;
+            if (!confirm(`确定删除队伍 ${code || ""}？该队伍的提交与快照也将一并删除。`)) return;
+            $("teamErr").textContent = "";
+            try {
+              await api("/admin/teams/" + tid, { method: "DELETE" });
+              await load();
+            } catch (e) {
+              $("teamErr").textContent = e.message;
+            }
+            return;
+          }
+
+          const btn = ev.target.closest(".btn-apply");
+          if (!btn) return;
+          const tr = btn.closest("tr");
+          const tid = tr?.dataset?.teamId;
+          const inp = tr.querySelector(".inp-add");
+          const add = Number(inp?.value);
+          if (!Number.isFinite(add) || add <= 0) {
+            $("teamErr").textContent = "请填写大于 0 的追加金额。";
+            return;
+          }
+          try {
+            const code = tr?.dataset?.teamCode || "";
+            const ok = confirm(`确认给队伍 ${code} 追加资金 ${add} ？（将直接计入队伍可用资金）`);
+            if (!ok) return;
+            await api("/admin/teams/" + tid, { method: "PATCH", body: JSON.stringify({ addFollowOn: add }) });
+            inp.value = "";
+            await load();
+          } catch (e) { $("teamErr").textContent = e.message; }
+        });
+      }
+
+      async function load() {
+        $("playUrl").textContent = playBase() + "/play.html";
+        const st = await api("/admin/state");
+        applyRoundControl(st);
+        renderEventHint(st);
+        if (st.timer && st.serverTime) {
+          ADMIN_TIMER_END_MS = Date.parse(st.timer.endsAt);
+          ADMIN_TIMER_CLIENT_ANCHOR = Date.now();
+          ADMIN_TIMER_SERVER_AT = Date.parse(st.serverTime);
+        } else {
+          ADMIN_TIMER_END_MS = null;
+        }
+        tickAdminTimer();
+        const teamsSorted = [...st.teams].sort((a, b) => (b.weighted_total ?? 0) - (a.weighted_total ?? 0));
+        $("teamRows").innerHTML = teamsSorted.map((t, i) => {
+          const fitAvg = avg(t.fit_by_city);
+          const showAvg = avg(t.show_by_city);
+          return `<tr data-team-id="${t.id}" data-team-code="${escHtml(t.team_code)}">
+            <td>${i + 1}</td>
+            <td>${escHtml(t.team_code)}</td>
+            <td><div style="font-weight:600">${escHtml(t.team_name || "—")}</div></td>
+            <td><div class="muted" style="font-size:12px">${escHtml(t.product_name || "—")}</div></td>
+            <td>${escHtml(t.pin || "—")}</td>
+            <td>${escHtml(t.homeCity)}</td>
+            <td>${escHtml(t.opened_cities.join("·"))}</td>
+            <td class="num">${t.budget.toFixed(1)}</td>
+            <td><input type="number" class="inp-add" min="0" step="0.1" placeholder="0" style="width:4.2rem" /></td>
+            <td><button class="secondary btn-apply" style="min-height:28px;padding:3px 10px;font-size:12px">追加</button></td>
+            <td><button class="secondary btn-del" style="min-height:28px;padding:3px 10px;font-size:12px;border-color:color-mix(in srgb, var(--tv-danger) 45%, var(--tv-border)); color: var(--tv-danger)">删除</button></td>
+            <td class="num">${t.tech.toFixed(2)}</td>
+            <td class="num">${fitAvg.toFixed(2)}</td>
+            <td class="num">${showAvg.toFixed(2)}</td>
+            <td class="num">${(t.weighted_total ?? 0).toFixed(2)}</td>
+            <td>${t.last_rank ?? "—"}</td>
+          </tr>`;
+        }).join("");
+        bindPatchOnce();
+
+        $("roundRows").innerHTML = st.rounds.map((r) => {
+          const ev = META?.events.find((e) => e.id === r.event_id);
+          return `<tr><td>R${r.round_no}</td><td>${r.status}</td><td>${escHtml(ev?.label ?? r.event_id)}</td><td>${r.spend_cap_multiplier}</td></tr>`;
+        }).join("");
+      }
+
+      $("btnAdminLogin").onclick = async () => {
+        $("loginErr").textContent = "";
+        try {
+          await api("/auth/admin", { method: "POST", body: JSON.stringify({ password: $("adminPw").value }) });
+          $("loginCard").style.display = "none";
+          $("main").style.display = "block";
+          META = await api("/public/meta");
+          await load();
+          if (!ADMIN_TICK) ADMIN_TICK = setInterval(tickAdminTimer, 250);
+          if (!ADMIN_POLL) ADMIN_POLL = setInterval(load, 5000);
+        } catch (e) { $("loginErr").textContent = e.message; }
+      };
+
+      $("btnAddTeam").onclick = async () => {
+        $("teamErr").textContent = "";
+        try {
+          await api("/admin/teams", {
+            method: "POST",
+            body: JSON.stringify({
+              team_code: $("nt_code").value,
+              pin: $("nt_pin").value,
+              team_name: $("nt_name").value,
+              product_name: $("nt_product").value,
+            }),
+          });
+          $("nt_code").value = ""; $("nt_name").value = ""; $("nt_product").value = ""; $("nt_pin").value = "";
+          await load();
+        } catch (e) { $("teamErr").textContent = e.message; }
+      };
+
+      $("btnOpenRound").onclick = async () => {
+        $("roundErr").textContent = "";
+        try { await api("/admin/rounds/next/open", { method: "POST" }); await load(); }
+        catch (e) { $("roundErr").textContent = e.message; }
+      };
+
+      $("btnSettle").onclick = async () => {
+        $("roundErr").textContent = "";
+        try { await api("/admin/rounds/current/settle", { method: "POST" }); await load(); alert("结算完成"); }
+        catch (e) { $("roundErr").textContent = e.message; }
+      };
+
+      $("btnLogout").onclick = async () => {
+        await api("/auth/logout", { method: "POST", body: JSON.stringify({ scope: "admin" }) });
+        if (ADMIN_TICK) { clearInterval(ADMIN_TICK); ADMIN_TICK = null; }
+        if (ADMIN_POLL) { clearInterval(ADMIN_POLL); ADMIN_POLL = null; }
+        ADMIN_TIMER_END_MS = null;
+        $("main").style.display = "none";
+        $("loginCard").style.display = "block";
+      };
+
+      $("btnRestartActivity").onclick = async () => {
+        $("restartErr").textContent = "";
+        const removeTeams = $("restartRemoveTeams").checked;
+        if (removeTeams && !confirm("已勾选「删除所有队伍」。重置后需重新添加队伍，确定继续？")) return;
+        if (!confirm("确定重新开始一局？当前进度与提交记录将被清空且不可恢复。")) return;
+        try {
+          const budget = Number($("restartBudget").value);
+          await api("/admin/activity/restart", {
+            method: "POST",
+            body: JSON.stringify({
+              confirm: "RESTART",
+              removeTeams,
+              ...(Number.isFinite(budget) && budget >= 0 ? { defaultBudget: budget } : {}),
+            }),
+          });
+          await load();
+          alert("已重置，可以开始新的一局。");
+        } catch (e) { $("restartErr").textContent = e.message; }
+      };
+
+      // 未登录进入管理端：先尝试静默读 state；若 401 则显示登录
+      (async () => {
+        try {
+          await api("/admin/state");
+          $("loginCard").style.display = "none";
+          $("main").style.display = "block";
+          META = await api("/public/meta");
+          fillEventSelect();
+          await load();
+        } catch { /* stay on login */ }
+      })();
+    </script>
+  </body>
+</html>

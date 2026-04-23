@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TechVenture · 会场大屏</title>
+    <meta name="theme-color" content="#0a0e14" />
+    <link rel="stylesheet" href="/common.css" />
+  </head>
+  <body class="tv-body tv-body--screen">
+    <div class="page page--screen" style="padding-bottom: clamp(70px, 10vh, 92px)">
+      <section class="card card--screen-hero">
+        <header class="tv-screen-header">
+          <div>
+            <h1 class="tv-screen-title">TechVenture · 会场大屏</h1>
+          </div>
+          <div>
+            <p class="tv-screen-meta"><strong id="stageBadge">—</strong></p>
+            <p class="tv-screen-updated"><strong id="roundTimer">—</strong></p>
+            <p class="tv-screen-updated" id="eventHint" style="display:none; color: var(--tv-warn); font-weight: 800">本轮事件：—</p>
+            <p class="tv-screen-updated" id="viewHint">当前：三城关注度分布</p>
+            <p class="tv-screen-updated" id="updated">—</p>
+          </div>
+        </header>
+      </section>
+
+      <section class="screen-flip-wrap" aria-label="会场主屏轮播">
+        <div class="screen-flip" id="screenFlip">
+          <div class="screen-flip-panel screen-flip-panel--pies is-active" id="panelPies" role="tabpanel" aria-hidden="false">
+            <div class="screen-round-block" style="min-height: 100%">
+              <h3>
+                <span id="pieTitle">三城关注度分配</span>
+                <span class="ev" id="pieEvent">—</span>
+              </h3>
+              <div class="screen-pies" id="pies"></div>
+            </div>
+          </div>
+          <div class="screen-flip-panel screen-flip-panel--board" id="panelBoard" role="tabpanel" aria-hidden="true">
+            <div class="screen-round-block tv-news-board" style="margin: 0; min-height: 100%">
+              <h3 class="screen-board-h3">
+                <span>累计榜单</span>
+                <span class="ev" id="boardSub">按加权总分排序</span>
+              </h3>
+              <div class="tv-news-cols">
+                <div class="tv-news-col">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style="width: 3em">#</th>
+                        <th>队伍</th>
+                        <th>产品</th>
+                        <th class="num">累计关注度</th>
+                        <th class="num">加权总分</th>
+                        <th class="num">上轮</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rowsL"></tbody>
+                  </table>
+                </div>
+                <div class="tv-news-col">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style="width: 3em">#</th>
+                        <th>队伍</th>
+                        <th>产品</th>
+                        <th class="num">累计关注度</th>
+                        <th class="num">加权总分</th>
+                        <th class="num">上轮</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rowsR"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="tv-bottom-ticker" role="status" aria-live="polite">
+      <div class="tag">NEWS</div>
+      <div class="rail">
+        <div class="marquee" id="marquee">
+          <div class="marquee__track">
+            <div class="marquee__group">等待开赛：主持开放 R1 后，底部将滚动显示上一轮结算新闻。</div>
+            <div class="marquee__group" aria-hidden="true">等待开赛：主持开放 R1 后，底部将滚动显示上一轮结算新闻。</div>
+          </div>
+        </div>
+      </div>
+      <div class="meta" id="tickerMeta">—</div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const FLIP_MS = 30000;
+
+      function escHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      }
+
+      function polarToCart(cx, cy, r, rad) {
+        return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+      }
+
+      function svgPieArc(cx, cy, r, startRad, endRad) {
+        const [x1, y1] = polarToCart(cx, cy, r, startRad);
+        const [x2, y2] = polarToCart(cx, cy, r, endRad);
+        const large = endRad - startRad > Math.PI ? 1 : 0;
+        return `M ${cx},${cy} L ${x1},${y1} A ${r},${r} 0 ${large} 1 ${x2},${y2} Z`;
+      }
+
+      function hash32(str) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 0x01000193);
+        }
+        return h >>> 0;
+      }
+
+      const PIE_DISTINCT_PALETTE = [
+        "#f5f0eb",
+        "#e63946",
+        "#9b6a4a",
+        "#9b1b3a",
+        "#2eb6f0",
+        "#4f6328",
+        "#f5ee4a",
+        "#d9a20a",
+        "#0a2239",
+        "#6f2dbd",
+        "#1faa59",
+        "#9ec52c",
+        "#f06292",
+        "#ff7a2f",
+        "#0eb8c4",
+        "#d81b6a",
+      ];
+
+      const TEAM_COLOR = new Map();
+      let TEAM_COLOR_SIG = "";
+
+      function buildTeamColors(teamIds) {
+        const ids = [...new Set(teamIds.filter(Boolean).map(String))];
+        ids.sort((a, b) => hash32(a) - hash32(b));
+        const sig = ids.join("|");
+        if (sig && sig === TEAM_COLOR_SIG && TEAM_COLOR.size) return;
+        TEAM_COLOR_SIG = sig;
+        TEAM_COLOR.clear();
+        if (!ids.length) return;
+        for (let i = 0; i < ids.length; i++) {
+          const id = ids[i];
+          TEAM_COLOR.set(id, PIE_DISTINCT_PALETTE[i % PIE_DISTINCT_PALETTE.length]);
+        }
+      }
+
+      function colorForTeam(teamId) {
+        if (!teamId) return "#38bdf8";
+        return TEAM_COLOR.get(String(teamId)) ?? "#38bdf8";
+      }
+
+      function renderPie(pie) {
+        const slices = [...pie.slices].sort((a, b) => b.value - a.value);
+        const unmetPct = Math.max(0, 1 - pie.ceiling);
+        const unmetVal = unmetPct;
+        const total = slices.reduce((a, b) => a + b.value, 0) + unmetVal;
+        const cx = 110, cy = 110, r = 100;
+        let acc = -Math.PI / 2;
+        let pathsHtml = "";
+        const legend = [];
+        slices.forEach((s) => {
+          const frac = s.value / total;
+          if (frac <= 0) return;
+          const end = acc + frac * 2 * Math.PI;
+          const color = colorForTeam(s.teamId);
+          pathsHtml += `<path d="${svgPieArc(cx, cy, r, acc, end)}" fill="${color}" stroke="rgba(10,14,20,0.92)" stroke-width="1.6"></path>`;
+          legend.push({ color, name: s.displayName || "—", product: s.productName, pct: frac * 100 });
+          acc = end;
+        });
+        if (unmetPct > 0.005) {
+          const end = acc + unmetPct * 2 * Math.PI;
+          pathsHtml += `<path d="${svgPieArc(cx, cy, r, acc, end)}" fill="rgba(255,255,255,0.08)" stroke="rgba(10,14,20,0.92)" stroke-width="1.6"></path>`;
+        }
+        const svg = `<svg class="pie-svg" viewBox="0 0 220 220">${pathsHtml}</svg>`;
+        const teamLeg = legend;
+        const unmetRowPct = unmetPct * 100;
+        const top6 = teamLeg.slice(0, 6);
+        const restPct = teamLeg.slice(6).reduce((s, x) => s + (Number(x.pct) || 0), 0);
+        const rows = [];
+        for (const x of top6) {
+          rows.push({
+            dot: `background:${x.color}`,
+            name: x.name,
+            title: x.name,
+            pct: x.pct,
+          });
+        }
+        if (top6.length < teamLeg.length) {
+          rows.push({
+            dot: "background:#b8956c;border:1px solid rgba(10,14,20,0.5)",
+            name: "其余公司",
+            title: "第 7 名及之后队伍份额合计",
+            pct: restPct,
+          });
+        } else {
+          rows.push({
+            dot: "background:#b8956c;border:1px solid rgba(10,14,20,0.5)",
+            name: "其余公司",
+            title: "第 7 名及之后队伍份额合计",
+            pct: 0,
+          });
+        }
+        rows.push({
+          dot: "background:#3d5a73;border:1px solid rgba(10,14,20,0.5)",
+          name: "未关注市场用户",
+          title: "市场注意力未指向参赛产品的份额",
+          pct: unmetRowPct,
+        });
+        const legendHtml = rows
+          .map(
+            (x) => `
+          <div class="pie-legend-row">
+            <span class="pie-legend-dot" style="${x.dot}"></span>
+            <span class="pie-legend-name" title="${escHtml(x.title)}">${escHtml(x.name)}</span>
+            <span class="pie-legend-pct">${Number(x.pct ?? 0).toFixed(1)}%</span>
+          </div>
+        `,
+          )
+          .join("");
+        return `
+          <div class="pie-card">
+            <h4>${escHtml(pie.cityId)}</h4>
+            <div class="pie-meta">规模 ${pie.marketScale.toFixed(2)} · 参赛 ${pie.kCity} 家 · 关注天花板 ${(pie.ceiling*100).toFixed(1)}%</div>
+            ${svg}
+            <div class="pie-legend">${legendHtml}</div>
+          </div>
+        `;
+      }
+
+      function setMarquee(html) {
+        const el = $("marquee");
+        const next = el.cloneNode(false);
+        next.id = "marquee";
+        next.className = "marquee";
+        next.innerHTML = `<div class="marquee__track"><div class="marquee__group">${html}</div><div class="marquee__group" aria-hidden="true">${html}</div></div>`;
+        el.parentNode.replaceChild(next, el);
+      }
+
+      function renderBoardRows(teams) {
+        const rows = (teams || []).map((t, i) => {
+          const rankCls = i === 0 ? "tv-rank-1" : i === 1 ? "tv-rank-2" : i === 2 ? "tv-rank-3" : "";
+          return `<tr class="${rankCls}">
+            <td><span class="tv-rank-badge">${i + 1}</span></td>
+            <td>
+              <div style="font-weight:800">${escHtml(t.team_name)} <span class="muted" style="font-weight:500">(${escHtml(t.team_code)})</span></div>
+            </td>
+            <td>
+              <div class="muted" style="font-size:0.85em">${escHtml(t.product_name || "—")}</div>
+            </td>
+            <td class="num">${Number(t.attention_total ?? 0).toFixed(1)}</td>
+            <td class="num"><strong>${Number(t.weighted_total ?? 0).toFixed(2)}</strong></td>
+            <td class="num">${t.last_rank ?? "—"}</td>
+          </tr>`;
+        });
+        const mid = Math.ceil(rows.length / 2);
+        $("rowsL").innerHTML = rows.slice(0, mid).join("");
+        $("rowsR").innerHTML = rows.slice(mid).join("");
+        if (!rows.length) {
+          $("rowsL").innerHTML = '<tr><td colspan="6" class="muted">暂无队伍数据</td></tr>';
+          $("rowsR").innerHTML = "";
+        }
+      }
+
+      function formatTickerLine(n) {
+        const hl = escHtml(n.headline || "");
+        const sub = escHtml(n.body || "");
+        if (!sub) {
+          return `<span class="ticker-item"><span class="ticker-hl">【R${n.round_no}】${hl}</span></span>`;
+        }
+        return `<span class="ticker-item"><span class="ticker-hl">【R${n.round_no}】${hl}</span><span class="ticker-dash"> — </span><span class="ticker-sub">${sub}</span></span>`;
+      }
+
+      let lastRoundNo = null;
+      let lastNewsId = null;
+      let showingPies = true;
+      let TIMER_END_MS = null;
+      let TIMER_CLIENT_ANCHOR = 0;
+      let TIMER_SERVER_AT = 0;
+
+      function fmtMMSS(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        const m = Math.floor(s / 60);
+        const ss = String(s % 60).padStart(2, "0");
+        return `${m}:${ss}`;
+      }
+
+      function tickTimer() {
+        const el = $("roundTimer");
+        if (!TIMER_END_MS) { el.textContent = "本轮倒计时：—"; return; }
+        const serverNow = TIMER_SERVER_AT + (Date.now() - TIMER_CLIENT_ANCHOR);
+        const remain = Math.max(0, TIMER_END_MS - serverNow);
+        el.textContent = `本轮倒计时：${fmtMMSS(remain)}`;
+      }
+
+      function applyFlip() {
+        const piesOn = showingPies;
+        $("panelPies").classList.toggle("is-active", piesOn);
+        $("panelBoard").classList.toggle("is-active", !piesOn);
+        $("panelPies").setAttribute("aria-hidden", piesOn ? "false" : "true");
+        $("panelBoard").setAttribute("aria-hidden", !piesOn ? "false" : "true");
+        $("viewHint").textContent = piesOn ? "当前：三城关注度分布" : "当前：累计实时榜单";
+      }
+
+      setInterval(() => {
+        showingPies = !showingPies;
+        applyFlip();
+      }, FLIP_MS);
+
+      let META = null;
+
+      async function load() {
+        if (!META) META = await fetch("/api/public/meta").then((r) => r.json());
+        const [data, lb] = await Promise.all([
+          fetch("/api/public/screen").then((r) => r.json()),
+          fetch("/api/public/leaderboard").then((r) => r.json()),
+        ]);
+        const open = data.openRound;
+        const last = data.lastSettled;
+        const settled = data.perRoundReports || [];
+        let stage = "等待开赛";
+        if (open) stage = `第 ${open.round_no} 轮进行中`;
+        else if (last) stage = `第 ${last.round_no} 轮已结算`;
+        if (settled.length === 4) stage = "全部轮次结束";
+        $("stageBadge").textContent = stage;
+        $("updated").textContent = "数据更新：" + new Date().toLocaleTimeString();
+        applyFlip();
+
+        const evRound = open && open.status === "open" ? open : last;
+        const evObj = evRound && evRound.round_no === 3 && evRound.event_id && evRound.event_id !== "none"
+          ? (META.events || []).find((e) => e.id === evRound.event_id)
+          : null;
+        if (evObj) {
+          $("eventHint").style.display = "block";
+          $("eventHint").textContent = `本轮事件：${evObj.label} · ${evObj.desc}`;
+          $("eventHint").title = evObj.desc || "";
+        } else {
+          $("eventHint").style.display = "none";
+          $("eventHint").title = "";
+        }
+
+        if (data.timer && data.serverTime) {
+          TIMER_END_MS = Date.parse(data.timer.endsAt);
+          TIMER_CLIENT_ANCHOR = Date.now();
+          TIMER_SERVER_AT = Date.parse(data.serverTime);
+        } else {
+          TIMER_END_MS = null;
+        }
+        tickTimer();
+
+        const rep = last ? settled.find((x) => x.round_no === last.round_no) : null;
+        if (rep) {
+          const allTeamIds = [];
+          for (const p of rep.cityPies || []) for (const s of (p.slices || [])) allTeamIds.push(s.teamId);
+          buildTeamColors(allTeamIds);
+          $("pieTitle").textContent = `第 ${rep.round_no} 轮 · 三城关注度分配`;
+          $("pieEvent").textContent = escHtml(rep.eventLabel || "无事件");
+          $("pies").innerHTML = rep.cityPies.map(renderPie).join("");
+        } else {
+          $("pieTitle").textContent = "三城关注度分配";
+          $("pieEvent").textContent = "等待首轮结算";
+          $("pies").innerHTML = `<div class="muted">暂无饼图数据</div>`;
+        }
+
+        renderBoardRows(lb.teams);
+
+        const targetNo = last?.round_no ?? null;
+        if (targetNo !== lastRoundNo) {
+          lastRoundNo = targetNo;
+          lastNewsId = null;
+        }
+        const feed = targetNo
+          ? await fetch("/api/public/news/" + targetNo).then((r) => r.json())
+          : await fetch("/api/public/news?limit=40").then((r) => r.json());
+        const list = (feed.news || []).slice().sort((a, b) => a.id - b.id);
+        const newest = list.length ? list[list.length - 1].id : null;
+        if (newest !== lastNewsId) {
+          lastNewsId = newest;
+          const text = list.length
+            ? list.map((n) => formatTickerLine(n)).slice(-18).join(` <span class="sep">◆</span> `)
+            : "等待结算：暂无新闻。";
+          setMarquee(text);
+        }
+        $("tickerMeta").textContent = targetNo
+          ? `R${targetNo} 快讯 · 共 ${list.length} 条`
+          : `快讯 · 共 ${list.length} 条`;
+      }
+
+      load();
+      setInterval(load, 5000);
+      setInterval(tickTimer, 250);
+    </script>
+  </body>
+</html>

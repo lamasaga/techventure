@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0e14" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>TechVenture · 参赛端</title>
+    <link rel="stylesheet" href="/common.css" />
+    <style>
+      .money { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--tv-accent); }
+      .route-card {
+        padding: 10px 12px;
+        border-radius: var(--tv-radius-8);
+        background: var(--tv-surface-2);
+        border: 1px solid var(--tv-border);
+        margin-bottom: 10px;
+      }
+      .route-card small { color: var(--tv-text-tertiary); font-size: 12px; }
+      .city-toggle {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .city-toggle label {
+        margin: 0;
+        padding: 6px 12px;
+        border-radius: var(--tv-radius-pill);
+        border: 1px solid var(--tv-border);
+        background: var(--tv-surface-2);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .city-toggle label.on {
+        background: color-mix(in srgb, var(--tv-accent) 18%, var(--tv-surface));
+        border-color: color-mix(in srgb, var(--tv-accent) 45%, var(--tv-border));
+        color: var(--tv-text);
+      }
+      .city-toggle input { width: auto; margin: 0; }
+      .city-toggle label.locked { opacity: 0.75; cursor: default; }
+    </style>
+  </head>
+  <body class="tv-body tv-body--play">
+    <div class="page page--play" id="app">
+      <!-- 登录 -->
+      <div class="card" id="loginPanel">
+        <h1 class="play-hero-title">队伍登录</h1>
+        <p class="muted">使用主办方发放的队伍编号登录；若设置了口令需一并填写。</p>
+        <label>队伍编号</label>
+        <input type="text" id="teamCode" autocomplete="off" />
+        <label>队伍口令（可选）</label>
+        <input type="password" id="teamPin" autocomplete="off" />
+        <p class="err" id="loginErr"></p>
+        <button type="button" id="btnLogin">进入</button>
+      </div>
+
+      <!-- 主面板 -->
+      <div id="playPanel" style="display: none">
+        <!-- 分页：基本信息 -->
+        <div class="tv-tab-page" id="tabBasic">
+          <!-- 队伍头卡 -->
+          <div class="card">
+            <h1 class="play-hero-title" id="teamTitle">—</h1>
+            <p class="muted" id="teamSub">—</p>
+            <div class="stat-grid">
+              <div class="stat-cell sm"><div class="lbl">可用资金</div><div class="val money" id="headBudget">—</div></div>
+              <div class="stat-cell sm"><div class="lbl">上轮排名</div><div class="val" id="headRank">—</div></div>
+              <div class="stat-cell sm"><div class="lbl">累计加权分</div><div class="val" id="headWeighted">—</div></div>
+              <div class="stat-cell sm"><div class="lbl">Tech</div><div class="val" id="headTech">—</div></div>
+            </div>
+            <div style="display:flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+              <span class="chip" id="chipRoute">—</span>
+              <span class="chip" id="chipHome">主场 —</span>
+              <span class="chip" id="chipCities">开通城 —</span>
+              <span class="chip" id="chipEvent" style="display:none">R3 事件 —</span>
+            </div>
+            <p id="roundHint" class="muted" style="margin-top:10px"></p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
+              <button type="button" class="secondary" id="btnRefreshPage">刷新页面</button>
+            </div>
+          </div>
+          <button type="button" class="secondary" id="btnLogout">退出登录</button>
+        </div>
+
+        <!-- 分页：资金分配 -->
+        <div class="tv-tab-page" id="tabFunds" style="display:none">
+          <!-- 本轮决策 -->
+          <div class="card" id="decisionPanel" style="display:none">
+            <h2 id="decisionTitle">本轮决策</h2>
+            <p class="muted" id="decisionHint"></p>
+
+            <label>战略路线</label>
+            <select id="selRoute"></select>
+            <div id="routeDesc" class="route-card"></div>
+
+            <label>本轮经营城市（主场不可关闭）</label>
+            <div class="city-toggle" id="cityToggle"></div>
+            <p class="muted" style="font-size:12px; margin-top:6px" id="cityHint"></p>
+
+            <label style="margin-top: 14px">技术研发投入（全局）</label>
+            <input type="number" id="invTech" min="0" step="0.1" value="0" />
+            <p class="muted" style="font-size: 12px; margin-top: 2px" id="techHint"></p>
+
+            <label style="margin-top: 12px">分城投入（用户匹配 / 展示宣传）</label>
+            <div id="cityInvestWrap"></div>
+
+          <label style="margin-top: 12px">产品调整宣言（≤60 字）</label>
+          <textarea id="declaration" maxlength="60" rows="2" placeholder="如：为极客打造更硬核的推理引擎"></textarea>
+            <p class="muted" style="font-size: 12px; margin-top: 2px" id="declHint"></p>
+
+            <div class="sum-hint">
+              <span>本轮可用：<span class="money" id="capVal">0</span>
+                <span class="muted">（含切换费 <span id="costSwitch">0</span> · 开城费 <span id="costExpand">0</span>）</span>
+              </span>
+              <span>已用：<span id="sumUsed" class="money">0</span> · 剩余：<span id="sumRemain" class="money">0</span></span>
+            </div>
+            <p class="err" id="submitErr"></p>
+            <button type="button" id="btnSubmit">提交本轮决策</button>
+            <p class="muted" style="font-size: 12px; margin-top: 8px">
+              未用完的资金会自动进入储备（下一轮开始 +15% 利息）。
+            </p>
+          </div>
+          <div class="card" id="decisionClosedPanel" style="display:none">
+            <h2>资金分配</h2>
+            <p class="muted">当前没有开放中的回合，暂时无需提交；请等待主持开放下一轮。</p>
+          </div>
+        </div>
+
+        <!-- 分页：上轮反馈 -->
+        <div class="tv-tab-page" id="tabReport" style="display:none">
+          <!-- 上轮结算汇报 -->
+          <div class="card" id="reportPanel" style="display:none">
+            <h2 id="reportTitle">上轮结算汇报</h2>
+          <div class="stat-grid">
+            <div class="stat-cell"><div class="lbl">本轮排名</div><div class="val" id="rRank">—</div></div>
+            <div class="stat-cell"><div class="lbl">本轮关注度</div><div class="val" id="rEff">—</div></div>
+            <div class="stat-cell"><div class="lbl">本轮加权分</div><div class="val" id="rWeighted">—</div></div>
+            <div class="stat-cell"><div class="lbl">累计加权分</div><div class="val" id="rWeightedTotal">—</div></div>
+          </div>
+
+          <div class="report-section" id="cashflowSection" style="display:none">
+            <h3>上回合资金回顾（收入与追加）</h3>
+            <div class="kv" id="cashflowKv"></div>
+          </div>
+
+          <div class="report-section" id="crowdSection" style="display:none">
+            <h3>赛道拥挤度提示</h3>
+            <ul class="report-bullets" id="crowdList"></ul>
+          </div>
+
+          <div class="report-section">
+            <h3>属性成长</h3>
+            <div class="kv">
+              <dt>技术力 Tech</dt><dd id="rTech">—</dd>
+              <dt>三城平均 Fit</dt><dd id="rFit">—</dd>
+              <dt>三城平均 Show</dt><dd id="rShow">—</dd>
+            </div>
+          </div>
+
+          <div class="report-section">
+            <h3>分城表现</h3>
+            <div class="city-tabs" id="reportCityTabs"></div>
+            <div id="reportCityBody"></div>
+          </div>
+
+          <div class="report-section" id="strengthsSection" style="display:none">
+            <h3>优势 · 做得对的地方</h3>
+            <ul class="report-bullets" id="strengthsList"></ul>
+          </div>
+          <div class="report-section" id="warningsSection" style="display:none">
+            <h3>需要注意的问题</h3>
+            <ul class="report-bullets" id="warningsList"></ul>
+          </div>
+          <div class="report-section" id="criticalSection" style="display:none">
+            <h3>硬伤 · 必须改进</h3>
+            <ul class="report-bullets" id="criticalList"></ul>
+          </div>
+
+          <div class="report-section" id="bqiSection" style="display:none">
+            <h3>口碑与宣传问题</h3>
+            <ul class="report-bullets" id="prList"></ul>
+          </div>
+
+          <div class="report-section" id="govSection" style="display:none">
+            <h3>公司治理与发展</h3>
+            <ul class="report-bullets" id="govList"></ul>
+          </div>
+        </div>
+          <div class="card" id="reportEmptyPanel" style="display:none">
+            <h2>上轮反馈</h2>
+            <p class="muted">比赛还没产生可展示的结算结果。等主持结算后，这里会出现上轮反馈。</p>
+          </div>
+        </div>
+
+        <!-- 分页：新闻一栏 -->
+        <div class="tv-tab-page" id="tabNews" style="display:none">
+          <div class="card">
+            <h2>新闻一栏</h2>
+            <p class="muted" id="newsHint">—</p>
+            <div class="news-feed" id="newsFeed"></div>
+          </div>
+        </div>
+
+        <!-- 底部分页栏 -->
+        <nav class="tv-tabbar" id="tabbar" aria-label="参赛端分页">
+          <button type="button" class="tv-tabbtn active" data-tab="basic">
+            <span class="t">基本信息</span>
+          </button>
+          <button type="button" class="tv-tabbtn" data-tab="funds">
+            <span class="t">资金分配</span>
+          </button>
+          <button type="button" class="tv-tabbtn" data-tab="report">
+            <span class="t">上轮反馈</span>
+          </button>
+          <button type="button" class="tv-tabbtn" data-tab="news">
+            <span class="t">新闻一栏</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const CITY_IDS = ["南京", "合肥", "杭州"];
+      let META = null;
+      let STATE = null;
+      let DRAFT_DIRTY = false;
+      let AUTO_TIMER = null;
+      let LAST_POLL_KEY = "";
+      let AUTO_BACKOFF_MS = 0;
+
+      function r1(n) { return Math.round(Number(n) * 10) / 10; }
+      function fmt(n) {
+        if (n == null || !Number.isFinite(Number(n))) return "—";
+        const x = r1(n);
+        return x.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      }
+      function fmt2(n) {
+        if (n == null || !Number.isFinite(Number(n))) return "—";
+        return Number(n).toFixed(2);
+      }
+      function pct(n) {
+        if (n == null || !Number.isFinite(Number(n))) return "—";
+        return (Number(n) * 100).toFixed(1) + "%";
+      }
+      function signed(n) {
+        const v = r1(n);
+        if (Number.isNaN(v)) return "—";
+        return (v >= 0 ? "+" : "") + fmt(v);
+      }
+
+      async function api(path, opt) {
+        const r = await fetch("/api" + path, {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          ...opt,
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || r.statusText);
+        return data;
+      }
+
+      function showLogin() {
+        $("loginPanel").style.display = "block";
+        $("playPanel").style.display = "none";
+        stopAutoRefresh();
+      }
+
+      function makeRouteOptions() {
+        const sel = $("selRoute");
+        sel.innerHTML = "";
+        for (const r of META.routes) {
+          const opt = document.createElement("option");
+          opt.value = r.id;
+          opt.textContent = `${r.label}`;
+          sel.appendChild(opt);
+        }
+      }
+
+      function describeRoute(id) {
+        const r = META.routes.find((x) => x.id === id);
+        if (!r) return "";
+        // 参赛端不展示倍率/阈值等核心机制；只给路线叙事与操作层提示。
+        const hints = [];
+        if (r.canTriggerHotPulse) hints.push("更容易引发公众热议");
+        return `<strong>${r.label}</strong><br/><small>${r.tagline}</small>${hints.length ? `<br/><small>${hints.join(" · ")}</small>` : ""}`;
+      }
+
+      function renderCityToggle(team, selected, roundNo) {
+        const wrap = $("cityToggle");
+        wrap.innerHTML = "";
+        for (const c of CITY_IDS) {
+          const isR1 = roundNo === 1;
+          const isHome = c === team.homeCity;
+          const opened = team.opened_cities.includes(c);
+          const canExpand = !opened && roundNo >= 2;
+          const lb = document.createElement("label");
+          lb.className = "city-toggle-label";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.value = c;
+          cb.checked = selected.includes(c);
+          if (!isR1) {
+            if (isHome) { cb.checked = true; cb.disabled = true; lb.classList.add("locked"); }
+            if (!opened && !canExpand) { cb.disabled = true; lb.classList.add("locked"); }
+          } else {
+            // R1：必须且只能选 1 个城市作为主场；由选手决定，不锁定默认值。
+            // 允许点击切换：已选满 1 个时，其他城市禁用；取消勾选后重新可选。
+          }
+          cb.addEventListener("change", () => {
+            onCitiesChanged();
+          });
+          lb.appendChild(cb);
+          const cityLbl = document.createElement("span");
+          const cityMeta = META.cities.find((x) => x.id === c);
+          cityLbl.textContent = isR1 ? `${c} · 选择为主场` : (isHome ? `${c} · 主场` : (opened ? `${c} · 已开通` : (canExpand ? `${c} · 新开 -${META.economy.CITY_EXPAND_COST}` : `${c} · 锁定`)));
+          lb.appendChild(cityLbl);
+          if (cb.checked) lb.classList.add("on");
+          cb.addEventListener("change", () => { if (cb.checked) lb.classList.add("on"); else lb.classList.remove("on"); });
+          wrap.appendChild(lb);
+        }
+        if (roundNo === 1) {
+          const enforce = () => {
+            const chosen = getSelectedCities();
+            wrap.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+              if (el.checked) return;
+              el.disabled = chosen.length >= 1;
+            });
+          };
+          enforce();
+          wrap.querySelectorAll('input[type="checkbox"]').forEach((el) => el.addEventListener("change", enforce));
+        }
+        const hintParts = [];
+        if (roundNo === 1) hintParts.push("R1：请选择 1 个城市作为主场。");
+        if (roundNo >= 2) hintParts.push("R2–R4：可以选择开拓新城市（会产生成本）。");
+        $("cityHint").textContent = hintParts.join("  ");
+      }
+
+      function getSelectedCities() {
+        const out = [];
+        for (const cb of $("cityToggle").querySelectorAll('input[type="checkbox"]')) {
+          if (cb.checked) out.push(cb.value);
+        }
+        return out;
+      }
+
+      function renderCityInvestInputs(selectedCities, prefill) {
+        const wrap = $("cityInvestWrap");
+        wrap.innerHTML = "";
+        if (!selectedCities.length) {
+          wrap.innerHTML = '<p class="muted" style="font-size:12px">请先勾选经营城市。</p>';
+          return;
+        }
+        for (const c of selectedCities) {
+          const row = document.createElement("div");
+          row.className = "city-invest-row";
+          const left = document.createElement("div");
+          left.innerHTML = `
+            <label>${c} · 用户匹配 Fit</label>
+            <input type="number" data-city="${c}" data-kind="fit" min="0" step="0.1" value="${(prefill.fit[c] ?? 0)}" />
+          `;
+          const right = document.createElement("div");
+          right.innerHTML = `
+            <label>${c} · 展示宣传 Show</label>
+            <input type="number" data-city="${c}" data-kind="show" min="0" step="0.1" value="${(prefill.show[c] ?? 0)}" />
+          `;
+          row.appendChild(left);
+          row.appendChild(right);
+          wrap.appendChild(row);
+        }
+        wrap.querySelectorAll("input").forEach((el) => el.addEventListener("input", syncSums));
+      }
+
+      function readCityInvest() {
+        const fit = {}, show = {};
+        $("cityInvestWrap").querySelectorAll("input").forEach((el) => {
+          const c = el.dataset.city, k = el.dataset.kind;
+          const v = Math.max(0, r1(el.value || 0));
+          if (k === "fit") fit[c] = v; else show[c] = v;
+        });
+        return { fit, show };
+      }
+
+      function computeCosts(team, roundNo, selectedCities, selectedRoute) {
+        if (roundNo === 1) return { switchCost: 0, expandCost: 0 };
+        const switchCost = (roundNo > 1 && selectedRoute !== team.route) ? META.economy.ROUTE_SWITCH_COST : 0;
+        const newCities = selectedCities.filter((c) => !team.opened_cities.includes(c));
+        const expandCost = newCities.length * META.economy.CITY_EXPAND_COST;
+        return { switchCost, expandCost };
+      }
+
+      function syncSums() {
+        if (!STATE) return;
+        const team = STATE.team;
+        const r = STATE.openRound;
+        if (!r) return;
+        const route = $("selRoute").value;
+        const cities = getSelectedCities();
+        if (r.round_no === 1 && cities.length !== 1) {
+          $("submitErr").textContent = "R1 必须且只能选择 1 个主场城市。";
+        }
+        const { switchCost, expandCost } = computeCosts(team, r.round_no, cities, route);
+        const invTech = Math.max(0, r1($("invTech").value || 0));
+        const ci = readCityInvest();
+        const sumFit = Object.values(ci.fit).reduce((a, b) => a + b, 0);
+        const sumShow = Object.values(ci.show).reduce((a, b) => a + b, 0);
+        const used = r1(invTech + sumFit + sumShow + switchCost + expandCost);
+        const available = r1(STATE.effectiveAvailable);
+        const remain = r1(available - used);
+        $("capVal").textContent = fmt(available);
+        $("costSwitch").textContent = fmt(switchCost);
+        $("costExpand").textContent = fmt(expandCost);
+        $("sumUsed").textContent = fmt(used);
+        $("sumRemain").textContent = fmt(remain);
+        $("sumRemain").className = remain < -0.05 ? "money over" : "money";
+        $("submitErr").textContent = remain < -0.05 ? "投入合计（含切换/开城费）超过可用上限。" : "";
+      }
+
+      function onCitiesChanged() {
+        const sel = getSelectedCities();
+        const prev = readCityInvest();
+        const prefill = { fit: {}, show: {} };
+        for (const c of sel) {
+          prefill.fit[c] = prev.fit[c] ?? 0;
+          prefill.show[c] = prev.show[c] ?? 0;
+        }
+        renderCityInvestInputs(sel, prefill);
+        syncSums();
+      }
+
+      function declarationHint() {
+        const kw = META.declarationKeywords;
+        const txt = $("declaration").value || "";
+        const hits = { tech: [], fit: [], show: [], vision: [] };
+        for (const kind of Object.keys(kw)) {
+          for (const w of kw[kind]) {
+            if (txt.includes(w)) hits[kind].push(w);
+          }
+        }
+        const bits = [];
+        if (hits.tech.length) bits.push(`命中技术类（${hits.tech.join("、")}）`);
+        if (hits.fit.length) bits.push(`命中用户类（${hits.fit.join("、")}）`);
+        if (hits.show.length) bits.push(`命中品牌类（${hits.show.join("、")}）`);
+        if (hits.vision.length) bits.push(`命中全能类（${hits.vision.join("、")}）`);
+        $("declHint").textContent = bits.length ? bits.join("；") : "提示：宣言尽量写清“为谁解决什么问题”，并与本轮投入方向一致。";
+      }
+
+      function renderHeader() {
+        const t = STATE.team;
+        $("teamTitle").textContent = `${t.team_name || "未命名队伍"}（${t.team_code}）`;
+        $("teamSub").textContent = t.product_name ? `产品：${t.product_name}` : "产品名由主持在管理端设置";
+        $("headBudget").textContent = fmt(t.budget);
+        $("headRank").textContent = t.last_rank ?? "—";
+        $("headWeighted").textContent = fmt2(t.weighted_total);
+        $("headTech").textContent = fmt2(t.tech);
+        $("chipRoute").textContent = `路线：${STATE.routeLabel}`;
+        $("chipHome").textContent = `主场：${t.homeCity}`;
+        $("chipCities").textContent = `开通城：${t.opened_cities.join(" · ")}`;
+        const open = STATE.openRound;
+        const ev = open && open.round_no === 3 && open.event_id && open.event_id !== "none"
+          ? META.events.find((e) => e.id === open.event_id)
+          : null;
+        if (ev) {
+          $("chipEvent").style.display = "inline-flex";
+          $("chipEvent").textContent = `R3 事件：${ev.label}`;
+          $("chipEvent").title = ev.desc || "";
+          $("chipEvent").style.borderColor = "color-mix(in srgb, var(--tv-warn) 55%, var(--tv-border))";
+          $("chipEvent").style.background = "color-mix(in srgb, var(--tv-warn) 10%, var(--tv-surface))";
+          $("chipEvent").style.color = "var(--tv-warn)";
+        } else {
+          $("chipEvent").style.display = "none";
+          $("chipEvent").title = "";
+        }
+      }
+
+      function renderDecisionPanel() {
+        const r = STATE.openRound;
+        if (!r) {
+          $("decisionPanel").style.display = "none";
+          $("decisionClosedPanel").style.display = "block";
+          return;
+        }
+        $("decisionClosedPanel").style.display = "none";
+        $("decisionPanel").style.display = "block";
+        $("decisionTitle").textContent = `第 ${r.round_no} 轮决策`;
+        const evt = r.event_id && r.event_id !== "none"
+          ? META.events.find((e) => e.id === r.event_id)
+          : null;
+        const hintParts = [`本轮可用资金 ${fmt(STATE.effectiveAvailable)} 万`];
+        if (r.spend_cap_multiplier !== 1) hintParts.push(`支出上限系数 ×${r.spend_cap_multiplier.toFixed(2)}`);
+        if (evt) hintParts.push(`突发事件：${evt.label}（${evt.desc}）`);
+        $("decisionHint").textContent = hintParts.join(" · ");
+
+        makeRouteOptions();
+        $("selRoute").value = STATE.submission?.route || STATE.team.route;
+        $("selRoute").disabled = false; // R1 允许自选路线；R2+ 切换会产生费用（系统自动计入）
+        $("routeDesc").innerHTML = describeRoute($("selRoute").value);
+
+        const selectedCities = STATE.submission?.opened_cities || (r.round_no === 1 ? [] : STATE.team.opened_cities);
+        renderCityToggle(STATE.team, selectedCities, r.round_no);
+
+        const prefill = { fit: {}, show: {} };
+        if (STATE.submission) {
+          for (const c of CITY_IDS) {
+            prefill.fit[c] = STATE.submission.invest_fit_by_city?.[c] ?? 0;
+            prefill.show[c] = STATE.submission.invest_show_by_city?.[c] ?? 0;
+          }
+        }
+        renderCityInvestInputs(getSelectedCities(), prefill);
+        $("invTech").value = STATE.submission?.invest_tech ?? 0;
+        $("declaration").value = STATE.submission?.declaration ?? (STATE.prefillDeclaration || "");
+        declarationHint();
+        syncSums();
+        $("techHint").textContent = "提示：技术投入过高可能出现边际递减；均衡规划更稳。";
+      }
+
+      function routeLabel(id) {
+        const r = META.routes.find((x) => x.id === id);
+        return r ? r.label : id;
+      }
+
+      function renderReportPanel(snap) {
+        if (!snap) {
+          $("reportPanel").style.display = "none";
+          $("reportEmptyPanel").style.display = "block";
+          return;
+        }
+        $("reportEmptyPanel").style.display = "none";
+        $("reportPanel").style.display = "block";
+        const last = STATE.lastSettled;
+        $("reportTitle").textContent = last ? `第 ${last.round_no} 轮结算汇报` : "上轮结算汇报";
+
+        $("rRank").textContent = `第 ${snap.rank} 名`;
+        $("rEff").textContent = fmt(snap.effAttention);
+        $("rWeighted").textContent = fmt2(snap.weightedRoundScore);
+        $("rWeightedTotal").textContent = fmt2(snap.weightedTotal);
+
+        $("rTech").textContent = `${fmt2(snap.tech)}（${signed(snap.deltaTech)}）`;
+        // 资金回顾（含固定追加、投资人追加、利息）
+        if (snap.cashflow) {
+          const cf = snap.cashflow;
+          $("cashflowSection").style.display = "block";
+          $("cashflowKv").innerHTML = `
+            <dt>本轮可用资金上限</dt><dd>${fmt(cf.cap)} 万</dd>
+            <dt>本轮总支出（含切换/开城）</dt><dd>${fmt(cf.paid)} 万</dd>
+            <dt>本轮结余（进入储备）</dt><dd>${fmt(cf.reserved)} 万</dd>
+            <dt>储备利息到账（+15%）</dt><dd>${fmt(cf.interest)} 万</dd>
+            <dt>固定追加</dt><dd>${fmt(cf.grant)} 万</dd>
+            <dt>投资人追加</dt><dd>${fmt(cf.followOn)} 万</dd>
+            <dt>进入下一轮资金</dt><dd><span class="money">${fmt(cf.nextBudget)}</span> 万</dd>
+          `;
+        } else {
+          $("cashflowSection").style.display = "none";
+        }
+
+        // 赛道拥挤度（4 档）+ 是否存在蓝海（不透露是哪条）
+        if (snap.routeCrowd) {
+          const rc = snap.routeCrowd;
+          const crowdRow = (() => {
+            if (rc.level === "blue_ocean") return { cls: "good", text: "赛道状态：蓝海（几乎不吃拥挤惩罚）。" };
+            if (rc.level === "normal") return { cls: "info", text: "赛道状态：正常（拥挤惩罚不明显）。" };
+            if (rc.level === "crowded") return { cls: "warn", text: "赛道状态：拥挤（会吃到拥挤惩罚，拿关注更难）。" };
+            return { cls: "bad", text: "赛道状态：非常拥挤（拥挤惩罚强，注意力被严重稀释）。" };
+          })();
+          const blueRow = rc.hasBlueOceanSomewhere
+            ? { cls: "good", text: "场上存在蓝海赛道。" }
+            : { cls: "warn", text: "场上暂无蓝海赛道。" };
+          $("crowdList").innerHTML = `<li class="${crowdRow.cls}">${crowdRow.text}</li><li class="${blueRow.cls}">${blueRow.text}</li>`;
+          $("crowdSection").style.display = "block";
+        } else {
+          $("crowdSection").style.display = "none";
+        }
+        const fitArr = CITY_IDS.map((c) => snap.cities[c].fitAfter);
+        const showArr = CITY_IDS.map((c) => snap.cities[c].showAfter);
+        const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+        $("rFit").textContent = fmt2(avg(fitArr));
+        $("rShow").textContent = fmt2(avg(showArr));
+
+        const tabs = $("reportCityTabs");
+        tabs.innerHTML = "";
+        const body = $("reportCityBody");
+        body.innerHTML = "";
+        CITY_IDS.forEach((c, idx) => {
+          const d = snap.cities[c];
+          const tab = document.createElement("button");
+          tab.type = "button";
+          tab.className = "city-tab" + (idx === 0 ? " active" : "");
+          tab.textContent = c;
+          tab.onclick = () => {
+            tabs.querySelectorAll(".city-tab").forEach((t) => t.classList.remove("active"));
+            body.querySelectorAll(".city-pane").forEach((p) => p.classList.remove("active"));
+            tab.classList.add("active");
+            body.querySelector(`[data-city="${c}"]`).classList.add("active");
+          };
+          tabs.appendChild(tab);
+          const pane = document.createElement("div");
+          pane.className = "city-pane" + (idx === 0 ? " active" : "");
+          pane.dataset.city = c;
+          pane.innerHTML = `
+            <div class="stat-grid">
+              <div class="stat-cell sm"><div class="lbl">Fit</div><div class="val">${fmt2(d.fitAfter)}<small class="muted" style="font-size:11px"> ${signed(d.deltaFit)}</small></div></div>
+              <div class="stat-cell sm"><div class="lbl">Show</div><div class="val">${fmt2(d.showAfter)}<small class="muted" style="font-size:11px"> ${signed(d.deltaShow)}</small></div></div>
+              <div class="stat-cell sm"><div class="lbl">城内排名</div><div class="val">Fit 第 ${d.fitRank > 0 ? d.fitRank : "—"} · Show 第 ${d.showRank > 0 ? d.showRank : "—"}</div></div>
+              <div class="stat-cell sm"><div class="lbl">消费者份额</div><div class="val">${pct(d.rawShare)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">城市关注天花板</div><div class="val">${pct(d.ceiling)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本城关注度</div><div class="val">${fmt(d.attentionRaw)}</div></div>
+            </div>
+          `;
+          body.appendChild(pane);
+        });
+
+        const S = [], W = [], B = [];
+
+        // 参赛端反馈去“术语/数值化”：仅保留名次信息，其它用程度与叙事表达。
+        if (snap.rank <= 3) S.push(`本轮进入前三（第 ${snap.rank}）。建议下一轮先“稳住打法”：继续加大你们最有效的一项投入，别频繁大改方向。`);
+        if (snap.hotpulse > 0) S.push("本轮热度更高。建议下一轮把一部分预算从“扩声量”挪回“补基础”（技术/用户匹配二选一强化），让热度更稳。");
+        if (snap.deltaTech >= 0.8) S.push("技术推进较快。建议下一轮继续保持研发投入的强度，避免突然减速。");
+        if (snap.fBonus >= 1.06) S.push("用户匹配在变好。建议下一轮把用户匹配投入集中在你们最重要的经营城市，少撒网。");
+        if (snap.mCrowd >= 1.2 && snap.route === "PATHFINDER") S.push("路线红利对你们有利。建议下一轮趁势加大在核心城市的投入，把优势扩大。");
+        for (const c of CITY_IDS) {
+          if (snap.cities[c].ceiling >= 0.80) {
+            S.push(`${c} 整体热度更高。建议你们把这座城当主战场，优先把预算往这座城倾斜。`);
+          }
+        }
+
+        if (snap.mCrowd < 0.9 && snap.route === "PATHFINDER") W.push("同路线竞争变强。建议下一轮更聚焦：把预算集中到一个主城/一项主方向，避免摊薄。");
+        if (snap.bqi < 1.0 && snap.bqi > 0.85) W.push("观感偏挑剔。建议下一轮补一项短板：技术/用户/展示选一个加大投入，别三项都平均。");
+        if (snap.investShares.show > 0.6) W.push("宣传占比偏高。建议下一轮适当收一点宣传，把预算挪去技术或用户匹配，让底盘更稳。");
+        for (const c of CITY_IDS) {
+          if (snap.cities[c].rawShare < 0.05 && snap.cities[c].invFit + snap.cities[c].invShow > 0) {
+            W.push(`${c} 这座城回报偏弱。建议下一轮减少该城投入，把预算集中到更有反馈的城市。`);
+          }
+        }
+
+        if (snap.bqi <= 0.85) B.push("观感偏危险。建议下一轮少折腾：收缩城市、集中预算，优先把技术或用户匹配拉起来。");
+        if (snap.deltaTech < 0 || (snap.tech < 3 && snap.techIEff < 1)) B.push("技术推进感不足。建议下一轮明显加大研发投入，并减少分城分散投入。");
+        if (snap.techIEff < snap.techInvestRaw * 0.35) B.push("研发投入效率偏低。建议下一轮降低无效的超大研发投入，把预算分一部分去用户匹配或展示，形成更稳的组合。");
+        for (const c of CITY_IDS) {
+          const d = snap.cities[c];
+          if (d.invShow > 0 && d.showRank <= 1 && d.showAfter >= 9.5) {
+            B.push(`${c} 的宣传过猛，可能反感。建议下一轮降低该城宣传投入，把预算挪去技术或用户匹配。`);
+          }
+        }
+
+        function fillList(el, arr, cls) {
+          if (!arr.length) return false;
+          el.innerHTML = arr.map((x) => `<li class="${cls}">${x}</li>`).join("");
+          return true;
+        }
+        // 为避免与下方“口碑与宣传问题 / 公司治理与发展”重复展示：
+        // - “需要注意的问题”并入口碑与宣传问题
+        // - “优势”并入公司治理与发展
+        $("strengthsSection").style.display = "none";
+        $("warningsSection").style.display = "none";
+        $("criticalSection").style.display = fillList($("criticalList"), B, "bad") ? "block" : "none";
+
+        // 口碑与观感：用“等级 + 解释”呈现；再按“宣传口号/宣言”与“治理发展”分栏展示
+        const vibe = (() => {
+          const v = Number(snap.bqi ?? 1);
+          if (v >= 1.08) return { cls: "good", lvl: "强势", text: "整体口碑偏积极：市场更愿意相信你们。" };
+          if (v >= 0.98) return { cls: "info", lvl: "稳健", text: "整体口碑正常：大家能理解你们在做什么。" };
+          if (v >= 0.88) return { cls: "warn", lvl: "偏冷", text: "整体口碑偏冷：常见原因是宣传口号与资金分配不够匹配，或投入比较分散。" };
+          return { cls: "bad", lvl: "告急", text: "整体口碑偏危险：市场更容易质疑。" };
+        })();
+        const ruleLabel = (k) => ({
+          techLastThird: "技术掉队",
+          fitLastThird: "用户脱节",
+          marketingOver: "宣传反噬",
+          allRound: "稳扎稳打",
+          declarationReward: "口号加分",
+          declarationDeviationMinor: "口号脱节",
+        }[k] || "市场反馈");
+        const strengthByDelta = (d) => {
+          const x = Math.abs(Number(d) || 0);
+          if (x >= 0.12) return "影响很大";
+          if (x >= 0.07) return "影响明显";
+          if (x >= 0.03) return "有些影响";
+          return "影响不大";
+        };
+        const ruleAdvice = (k, sign) => {
+          // sign: +1 加分，-1 减分；只给可执行建议，不抛术语与数值
+          const bad = {
+            techLastThird: "下一轮建议明显加大研发投入，并减少分散投入。",
+            fitLastThird: "下一轮建议加大用户匹配投入，并集中在主经营城市。",
+            marketingOver: "下一轮建议适当降低宣传投入，把预算挪去技术或用户匹配。",
+            declarationDeviationMinor: "宣传口号与资金分配不匹配。",
+          };
+          const good = {
+            allRound: "建议保持均衡：技术、用户、展示三项不要明显偏科。",
+            declarationReward: "宣传口号与资金分配匹配。",
+          };
+          const pick = sign < 0 ? bad : good;
+          return pick[k] || (sign < 0 ? "下一轮建议收敛目标，选一个最关键的问题优先解决，并让宣言与投入对齐。" : "下一轮建议把这点优势继续做扎实，形成连续两轮的稳定表现。");
+        };
+        const contribs = Array.isArray(snap.bqiContribs) ? snap.bqiContribs : [];
+        // 1) 口碑与宣传问题：规则项 + “需要注意的问题”合并（去重后展示）
+        const prKeys = new Set(["declarationReward", "declarationDeviationMinor", "marketingOver"]);
+        const prRuleHtml = contribs
+          .filter((x) => prKeys.has(x.rule))
+          .map((x) => {
+            const sign = x.delta >= 0 ? "good" : "bad";
+            const dir = x.delta >= 0 ? "在加分" : "在减分";
+            const advice = ruleAdvice(x.rule, x.delta >= 0 ? 1 : -1);
+            // 口号相关：只给“匹配/不匹配”的事实归因，不给建议，避免误导
+            if (x.rule === "declarationReward" || x.rule === "declarationDeviationMinor") {
+              return `<li class="${sign}"><strong>${ruleLabel(x.rule)}</strong>：${advice}（${dir}）。</li>`;
+            }
+            return `<li class="${sign}"><strong>${ruleLabel(x.rule)}</strong>：${dir}。<br/><span class="muted">${advice}</span></li>`;
+          })
+          .join("");
+        const prTips = [...new Set(W)]
+          .filter((t) => !prRuleHtml.includes(t))
+          .map((t) => `<li class="warn"><strong>需要注意</strong>：${t}</li>`)
+          .join("");
+        const prHtml =
+          `<li class="${vibe.cls}"><strong>口碑等级：${vibe.lvl}</strong> — ${vibe.text}</li>` +
+          (prRuleHtml || `<li class="info">本轮未出现明显的“口号/宣传”相关加减分。</li>`) +
+          (prTips || "");
+
+        // 2) 公司治理与发展：排名 + 规则项 + “优势”合并（去重后展示）
+        const rankItem = `<li class="${snap.rank <= 3 ? "good" : "info"}"><strong>本轮排名</strong>：第 ${snap.rank} 名。<br/><span class="muted">${snap.rank <= 3 ? "建议下一轮稳住当前打法，避免大幅偏科。" : "建议下一轮选一项短板加大投入，争取把名次往前推。"}</span></li>`;
+        const govRuleHtml = contribs
+          .filter((x) => !prKeys.has(x.rule))
+          .map((x) => {
+            const sign = x.delta >= 0 ? "good" : "bad";
+            const dir = x.delta >= 0 ? "对你们有帮助" : "在拖后腿";
+            const advice = ruleAdvice(x.rule, x.delta >= 0 ? 1 : -1);
+            return `<li class="${sign}"><strong>${ruleLabel(x.rule)}</strong>：${dir}。<br/><span class="muted">${advice}</span></li>`;
+          })
+          .join("");
+        const govTips = [...new Set(S)]
+          .filter((t) => !govRuleHtml.includes(t))
+          .map((t) => `<li class="good"><strong>做得对</strong>：${t}</li>`)
+          .join("");
+        const govHtml = rankItem + (govRuleHtml || `<li class="info">本轮未出现额外的治理类加减分条目。</li>`) + (govTips || "");
+
+        $("prList").innerHTML = prHtml;
+        $("govList").innerHTML = govHtml;
+        $("bqiSection").style.display = "block";
+        $("govSection").style.display = "block";
+
+      }
+
+      function kindLabel(k) {
+        const map = {
+          hot_pulse: "爆款热搜",
+          pathfinder_boom: "独占红利",
+          pathfinder_crowd: "扎堆警报",
+          marketing_over: "过度营销",
+          declaration_win: "宣言兑现",
+          declaration_miss: "宣言脱节",
+          tech_last: "技术垫底",
+          fit_last: "用户脱节",
+          all_round: "全能玩家",
+          city_debut: "首开新城",
+          route_switch: "路线切换",
+          ceiling_boost: "城市过热",
+          rank_top: "登顶冠军",
+          event_r3: "突发事件",
+        };
+        return map[k] || k;
+      }
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      }
+
+      async function refresh() {
+        $("loginErr").textContent = "";
+        $("submitErr").textContent = "";
+        if (!META) META = await api("/public/meta");
+        STATE = await api("/play/state");
+        $("loginPanel").style.display = "none";
+        $("playPanel").style.display = "block";
+        renderHeader();
+        renderDecisionPanel();
+        renderReportPanel(STATE.lastSnapshot);
+        renderNewsPanel(STATE.news || []);
+
+        if (STATE.openRound) {
+          $("roundHint").textContent = `第 ${STATE.openRound.round_no} 轮正在开放提交 — 请完成本轮决策。`;
+        } else if (STATE.lastSettled) {
+          $("roundHint").textContent = `第 ${STATE.lastSettled.round_no} 轮已结算，等待下一轮开放。`;
+        } else {
+          $("roundHint").textContent = `比赛尚未开始，请等待主持开放 R1。`;
+        }
+
+        chooseDefaultTab();
+      }
+
+      $("selRoute").addEventListener("change", () => {
+        $("routeDesc").innerHTML = describeRoute($("selRoute").value);
+        DRAFT_DIRTY = true;
+        syncSums();
+      });
+      $("invTech").addEventListener("input", () => { DRAFT_DIRTY = true; syncSums(); });
+      $("declaration").addEventListener("input", () => { DRAFT_DIRTY = true; declarationHint(); });
+
+      $("btnLogin").onclick = async () => {
+        $("loginErr").textContent = "";
+        try {
+          await api("/auth/team", {
+            method: "POST",
+            body: JSON.stringify({ teamCode: $("teamCode").value, pin: $("teamPin").value }),
+          });
+          await refresh();
+          startAutoRefresh();
+        } catch (e) { $("loginErr").textContent = e.message; }
+      };
+      $("btnRefreshPage").onclick = () => {
+        location.reload();
+      };
+      $("btnLogout").onclick = async () => {
+        await api("/auth/logout", { method: "POST", body: JSON.stringify({ scope: "team" }) });
+        showLogin();
+      };
+
+      $("btnSubmit").onclick = async () => {
+        $("submitErr").textContent = "";
+        try {
+          const r = STATE.openRound;
+          if (!r) throw new Error("当前未开放提交");
+          const route = $("selRoute").value;
+          const cities = getSelectedCities();
+          const invTech = Math.max(0, r1($("invTech").value || 0));
+          const ci = readCityInvest();
+          await api("/play/submit", {
+            method: "POST",
+            body: JSON.stringify({
+              roundNo: r.round_no,
+              route,
+              openedCities: cities,
+              investTech: invTech,
+              investFitByCity: ci.fit,
+              investShowByCity: ci.show,
+              declaration: $("declaration").value,
+            }),
+          });
+          DRAFT_DIRTY = false;
+          await refresh();
+          $("submitErr").textContent = "";
+          alert("提交成功，结算前可随时修改并覆盖。");
+        } catch (e) { $("submitErr").textContent = e.message; }
+      };
+
+      (async () => {
+        try { META = await api("/public/meta"); await refresh(); }
+        catch { showLogin(); }
+      })();
+
+      /* ──────────────────────────────────────────────────────────
+       * 自动刷新（移动端友好）：回合开放/结算后自动同步
+       * ────────────────────────────────────────────────────────── */
+      function stateKey(st) {
+        const o = st?.openRound;
+        const l = st?.lastSettled;
+        const sub = st?.submission;
+        return [
+          o ? `o${o.id}:${o.round_no}:${o.status}:${o.event_id}:${o.spend_cap_multiplier}` : "o-",
+          l ? `l${l.id}:${l.round_no}:${l.status}:${l.event_id}` : "l-",
+          sub ? `s${sub.id}:${sub.created_at}:${sub.route}` : "s-",
+          st?.team ? `t${st.team.id}:${st.team.budget}:${st.team.last_rank}:${st.team.weighted_total}` : "t-",
+        ].join("|");
+      }
+
+      function captureDraft() {
+        const r = STATE?.openRound;
+        if (!r) return null;
+        return {
+          roundNo: r.round_no,
+          route: $("selRoute")?.value,
+          openedCities: getSelectedCities(),
+          investTech: Number($("invTech")?.value || 0),
+          invest: readCityInvest(),
+          declaration: $("declaration")?.value || "",
+        };
+      }
+
+      function restoreDraft(d) {
+        if (!d) return;
+        const r = STATE?.openRound;
+        if (!r || r.round_no !== d.roundNo) return;
+        if ($("selRoute")) $("selRoute").value = d.route || $("selRoute").value;
+        $("routeDesc").innerHTML = describeRoute($("selRoute").value);
+        renderCityToggle(STATE.team, d.openedCities || [], r.round_no);
+        renderCityInvestInputs(getSelectedCities(), d.invest || { fit: {}, show: {} });
+        if ($("invTech")) $("invTech").value = d.investTech ?? 0;
+        if ($("declaration")) $("declaration").value = d.declaration || "";
+        declarationHint();
+        syncSums();
+      }
+
+      function stopAutoRefresh() {
+        if (AUTO_TIMER) { clearTimeout(AUTO_TIMER); AUTO_TIMER = null; }
+        AUTO_BACKOFF_MS = 0;
+      }
+
+      function startAutoRefresh() {
+        stopAutoRefresh();
+        const scheduleNext = (ms) => {
+          if (AUTO_TIMER) clearTimeout(AUTO_TIMER);
+          AUTO_TIMER = setTimeout(tick, ms);
+        };
+        const jitterMs = () => {
+          const base = document.hidden ? 45000 : (10000 + Math.floor(Math.random() * 5000)); // 10~15s；后台页降频
+          return base + (AUTO_BACKOFF_MS || 0);
+        };
+        const tick = async () => {
+          try {
+            if (!META) META = await api("/public/meta");
+            const pol = await api("/play/poll");
+            const nextKey = pol?.key || "";
+            if (!nextKey) { scheduleNext(jitterMs()); return; }
+            if (nextKey !== LAST_POLL_KEY) {
+              // 有变化才拉全量 state
+              const next = await api("/play/state");
+              const draft = DRAFT_DIRTY ? captureDraft() : null;
+              STATE = next;
+              LAST_POLL_KEY = nextKey;
+              AUTO_BACKOFF_MS = 0;
+
+              renderHeader();
+              renderReportPanel(STATE.lastSnapshot);
+              renderNewsPanel(STATE.news || []);
+              renderDecisionPanel();
+              if (STATE.openRound && draft) restoreDraft(draft);
+              if (!STATE.openRound) DRAFT_DIRTY = false;
+
+              if (STATE.openRound) {
+                $("roundHint").textContent = `第 ${STATE.openRound.round_no} 轮正在开放提交 — 请完成本轮决策。`;
+              } else if (STATE.lastSettled) {
+                $("roundHint").textContent = `第 ${STATE.lastSettled.round_no} 轮已结算，等待下一轮开放。`;
+              } else {
+                $("roundHint").textContent = `比赛尚未开始，请等待主持开放 R1。`;
+              }
+            }
+            scheduleNext(jitterMs());
+          } catch {
+            // 网络/服务器临时波动：指数退避，避免雪崩
+            AUTO_BACKOFF_MS = AUTO_BACKOFF_MS ? Math.min(60000, Math.floor(AUTO_BACKOFF_MS * 1.7)) : 5000;
+            scheduleNext(jitterMs());
+          }
+        };
+        document.addEventListener("visibilitychange", () => {
+          scheduleNext(jitterMs());
+        });
+        scheduleNext(jitterMs());
+      }
+
+      /* ──────────────────────────────────────────────────────────
+       * 分页交互（底部 4 页签）
+       * ────────────────────────────────────────────────────────── */
+      const TAB_KEY = "tv_play_tab";
+      function setTab(tab) {
+        const map = { basic: "tabBasic", funds: "tabFunds", report: "tabReport", news: "tabNews" };
+        const id = map[tab] || map.basic;
+        for (const k of Object.keys(map)) {
+          const el = $(map[k]);
+          if (el) el.style.display = (map[k] === id) ? "block" : "none";
+        }
+        $("tabbar").querySelectorAll(".tv-tabbtn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+        try { localStorage.setItem(TAB_KEY, tab); } catch {}
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
+      function chooseDefaultTab() {
+        let saved = null;
+        try { saved = localStorage.getItem(TAB_KEY); } catch {}
+        if (saved && ["basic", "funds", "report", "news"].includes(saved)) { setTab(saved); return; }
+        if (STATE?.openRound) { setTab("funds"); return; }
+        if (STATE?.lastSnapshot) { setTab("report"); return; }
+        setTab("basic");
+      }
+      $("tabbar").querySelectorAll(".tv-tabbtn").forEach((b) => {
+        b.addEventListener("click", () => setTab(b.dataset.tab));
+      });
+
+      function renderNewsPanel(items) {
+        const last = STATE?.lastSettled;
+        $("newsHint").textContent = last
+          ? "只展示你们队伍的新闻，并按回合保留历史（最新回合在最上方）。"
+          : "比赛尚未结算过任何回合；新闻会在结算后出现。";
+        const list = Array.isArray(items) ? items : [];
+        if (!list.length) {
+          $("newsFeed").innerHTML = `<p class="muted" style="margin: 8px 0 0">暂无新闻。</p>`;
+          return;
+        }
+        // 分回合（最新回合在顶部）；同回合内按 id 从大到小（新到旧）
+        const groups = {};
+        for (const n of list) {
+          const r = Number(n.round_no) || 0;
+          if (!groups[r]) groups[r] = [];
+          groups[r].push(n);
+        }
+        const rounds = Object.keys(groups).map((x) => Number(x)).sort((a, b) => b - a);
+        $("newsFeed").innerHTML = rounds.map((r) => {
+          const items = groups[r].slice().sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+          const html = items.map((n) => `
+            <div class="news-item kind-${n.kind} related">
+              <div class="news-kicker">第 ${n.round_no} 轮 · ${kindLabel(n.kind)}</div>
+              <div class="news-headline">${escapeHtml(n.headline)}</div>
+              <div class="news-body">${escapeHtml(n.body)}</div>
+            </div>
+          `).join("");
+          return `
+            <div class="report-section" style="margin-top: 8px">
+              <h3>第 ${r} 轮</h3>
+              <div class="news-feed">${html}</div>
+            </div>
+          `;
+        }).join("");
+      }
+    </script>
+  </body>
+</html>

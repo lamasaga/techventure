@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>TechVenture · 投资人席</title>
+    <meta name="theme-color" content="#0a0e14" />
+    <link rel="stylesheet" href="/common.css" />
+    <style>
+      .judge-filter {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .judge-filter .chip { cursor: pointer; }
+      .judge-filter .chip.active {
+        background: color-mix(in srgb, var(--tv-accent) 24%, var(--tv-surface));
+        color: var(--tv-text);
+      }
+      .invest-mini td { padding: 4px 6px; font-size: 12px; }
+      .invest-mini th { font-size: 11px; }
+    </style>
+  </head>
+  <body class="tv-body tv-body--judge">
+    <div class="page page--judge" id="app">
+      <div class="card" id="loginPanel">
+        <h1 class="play-hero-title">投资人 · 评委席</h1>
+        <p class="muted">输入主办方提供的投资人口令，即可逐队查看关键决策与表现。</p>
+        <label>投资人口令</label>
+        <input type="password" id="pw" />
+        <p class="err" id="loginErr"></p>
+        <button type="button" id="btnLogin">进入</button>
+      </div>
+
+      <div id="main" style="display: none">
+        <div class="card">
+          <h1 class="play-hero-title">投资人席 · 决策一览</h1>
+          <p class="muted" id="headHint">按加权总分排序，可切换筛选路线；点击各回合查看当轮详情。</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin: 8px 0 0 0">
+            <span class="chip" id="r3EventHint" style="display:none">R3 事件 —</span>
+          </div>
+          <div class="judge-filter" id="routeFilter"></div>
+          <div class="stat-grid">
+            <div class="stat-cell sm"><div class="lbl">参赛队伍</div><div class="val" id="sumTeams">—</div></div>
+            <div class="stat-cell sm"><div class="lbl">当前阶段</div><div class="val" id="sumStage">—</div></div>
+            <div class="stat-cell sm"><div class="lbl">本场第一</div><div class="val" id="sumTop">—</div></div>
+            <div class="stat-cell sm"><div class="lbl">已结算轮</div><div class="val" id="sumSettled">—</div></div>
+          </div>
+        </div>
+
+        <div id="list"></div>
+
+        <button type="button" class="secondary" id="btnLogout">退出</button>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const CITY_IDS = ["南京", "合肥", "杭州"];
+      let META = null;
+      let DATA = null;
+      let activeRoute = "ALL";
+      const expanded = new Map();
+
+      const KIND_LABEL = {
+        hot_pulse: "爆款热搜",
+        pathfinder_boom: "独占红利",
+        pathfinder_crowd: "扎堆警报",
+        marketing_over: "过度营销",
+        declaration_win: "宣言兑现",
+        declaration_miss: "宣言脱节",
+        tech_last: "技术垫底",
+        fit_last: "用户脱节",
+        all_round: "全能玩家",
+        city_debut: "首开新城",
+        route_switch: "路线切换",
+        ceiling_boost: "城市过热",
+        rank_top: "登顶冠军",
+        event_r3: "突发事件",
+      };
+
+      async function api(path, opt) {
+        const r = await fetch("/api" + path, {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          ...opt,
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || r.statusText);
+        return data;
+      }
+
+      function fmt(n, d = 2) { return Number(n ?? 0).toFixed(d); }
+      function escHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      }
+
+      function fillFilter() {
+        const wrap = $("routeFilter");
+        const routes = [{ id: "ALL", label: "全部" }, ...META.routes.map((r) => ({ id: r.id, label: r.label }))];
+        wrap.innerHTML = routes.map((r) => `<span class="chip ${r.id === activeRoute ? "active" : ""}" data-id="${r.id}">${r.label}</span>`).join("");
+        wrap.querySelectorAll(".chip").forEach((el) => el.addEventListener("click", () => {
+          activeRoute = el.dataset.id;
+          fillFilter();
+          render();
+        }));
+      }
+
+      function investTable(sub) {
+        const rows = CITY_IDS.map((c) => {
+          const fit = sub.invest_fit_by_city?.[c] ?? 0;
+          const show = sub.invest_show_by_city?.[c] ?? 0;
+          return `<tr>
+            <td>${c}${sub.opened_cities.includes(c) ? "" : "<span class=\"muted\"> · 未开通</span>"}</td>
+            <td class="num">${fmt(fit, 1)}</td>
+            <td class="num">${fmt(show, 1)}</td>
+          </tr>`;
+        }).join("");
+        return `
+          <table class="invest-mini city-invest-table">
+            <thead><tr><th>城市</th><th class="num">Fit 投入</th><th class="num">Show 投入</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+
+      function roundBody(r) {
+        if (!r) return `<div class="muted">（该轮未进行）</div>`;
+        if (!r.submission && !r.snapshot) {
+          if (r.settled) return `<div class="muted">该轮未提交决策（按默认处理）。</div>`;
+          return `<div class="muted">尚未提交 / 尚未结算。</div>`;
+        }
+        const parts = [];
+        if (r.submission) {
+          const s = r.submission;
+          const routeLabel = (META.routes.find((x) => x.id === s.route) || {}).label || s.route;
+          parts.push(`
+            <div class="kv">
+              <dt>路线</dt><dd>${escHtml(routeLabel)}</dd>
+              <dt>经营城市</dt><dd>${escHtml(s.opened_cities.join(" · "))}</dd>
+              <dt>技术投入</dt><dd>${fmt(s.invest_tech, 1)}</dd>
+              <dt>切换/开城</dt><dd>${fmt(s.switch_cost_paid, 1)} / ${fmt(s.expand_cost_paid, 1)}</dd>
+              <dt>产品宣言</dt><dd>${escHtml(s.declaration || "（空）")}</dd>
+            </div>
+            ${investTable(s)}
+          `);
+        } else {
+          parts.push(`<div class="muted">未提交决策</div>`);
+        }
+        if (r.snapshot) {
+          const snap = r.snapshot;
+          parts.push(`
+            <div class="stat-grid" style="margin-top:8px">
+              <div class="stat-cell sm"><div class="lbl">排名</div><div class="val">第 ${snap.rank}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本轮关注度</div><div class="val">${fmt(snap.effAttention, 1)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本轮加权</div><div class="val">${fmt(snap.weightedRoundScore, 2)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">BQI</div><div class="val">${fmt(snap.bqi, 2)}${snap.bqiClipped ? " *" : ""}</div></div>
+            </div>
+            <div class="kv" style="margin-top:6px">
+              <dt>Tech</dt><dd>${fmt(snap.tech, 2)} (${snap.deltaTech >= 0 ? "+" : ""}${fmt(snap.deltaTech, 2)})</dd>
+              <dt>Hot Pulse</dt><dd>${snap.hotpulseLabel || (snap.hotpulse > 0 ? "+"+fmt(snap.hotpulse,1) : "—")}</dd>
+              <dt>Momentum</dt><dd>${fmt(snap.momentum, 2)}</dd>
+              <dt>投入占比</dt><dd>T ${(snap.investShares.tech*100).toFixed(0)}% · F ${(snap.investShares.fit*100).toFixed(0)}% · S ${(snap.investShares.show*100).toFixed(0)}%</dd>
+            </div>
+          `);
+          if (snap.bqiContribs && snap.bqiContribs.length) {
+            parts.push(`<ul class="report-bullets" style="margin-top:4px">` +
+              snap.bqiContribs.map((x) => {
+                const cls = x.delta >= 0 ? "good" : "bad";
+                const d = (x.delta >= 0 ? "+" : "") + (x.delta * 100).toFixed(1) + "%";
+                return `<li class="${cls}"><strong>${escHtml(x.rule)}</strong> ${d} — ${escHtml(x.note)}</li>`;
+              }).join("") + `</ul>`);
+          }
+        }
+        return parts.join("");
+      }
+
+      function render() {
+        const teams = (DATA.teams || []).filter((t) => activeRoute === "ALL" || t.route === activeRoute);
+        const sortedTeams = [...teams].sort((a, b) => (b.weighted_total ?? 0) - (a.weighted_total ?? 0));
+        const topTeam = DATA.leaderboard?.[0];
+        $("sumTeams").textContent = DATA.teams.length;
+        $("sumTop").textContent = topTeam ? topTeam.team_name : "—";
+        const settled = (DATA.rounds || []).filter((r) => r.status === "settled").length;
+        $("sumSettled").textContent = settled + " / 4";
+        const open = (DATA.rounds || []).find((r) => r.status === "open");
+        $("sumStage").textContent = open ? `R${open.round_no} 进行中` : (settled === 4 ? "全部结束" : settled ? `R${settled} 已结` : "未开赛");
+        const r3 = (DATA.rounds || []).find((r) => r.round_no === 3);
+        const ev = r3 && r3.event_id && r3.event_id !== "none" ? META.events.find((e) => e.id === r3.event_id) : null;
+        if (ev && open && open.round_no === 3) {
+          $("r3EventHint").style.display = "inline-flex";
+          $("r3EventHint").textContent = `R3 事件：${ev.label}`;
+          $("r3EventHint").title = ev.desc || "";
+        } else if (ev && r3 && r3.status === "settled") {
+          $("r3EventHint").style.display = "inline-flex";
+          $("r3EventHint").textContent = `R3 事件：${ev.label}（已生效）`;
+          $("r3EventHint").title = ev.desc || "";
+        } else {
+          $("r3EventHint").style.display = "none";
+          $("r3EventHint").title = "";
+        }
+
+        const html = sortedTeams.map((t) => {
+          const isOpen = expanded.get(t.id) ?? (sortedTeams[0]?.id === t.id);
+          const activeRound = expanded.get("r_" + t.id) ?? null;
+          const firstSettled = t.rounds.find((r) => r.settled || r.submission)?.round_no ?? 1;
+          const showRound = activeRound ?? firstSettled;
+          const r = t.rounds.find((x) => x.round_no === showRound);
+          return `
+            <div class="card judge-team-card" data-team-id="${t.id}">
+              <div class="judge-team-head">
+                <div>
+                  <div class="title">${escHtml(t.team_name)} <span class="muted" style="font-weight:500">(${escHtml(t.team_code)})</span></div>
+                  <div class="product">产品：${escHtml(t.product_name || "—")}</div>
+                  <div class="meta" style="margin-top:4px">
+                    <span class="chip">${escHtml(t.route_label)}</span>
+                    <span class="chip">主场 ${escHtml(t.home_city)}</span>
+                    <span class="chip">加权 ${fmt(t.weighted_total, 2)}</span>
+                    <span class="chip">上轮 ${t.last_rank ?? "—"}</span>
+                  </div>
+                </div>
+                <button class="secondary btn-toggle" style="min-height:32px;padding:4px 12px">${isOpen ? "收起" : "展开"}</button>
+              </div>
+              <div class="judge-body" style="display:${isOpen ? "block" : "none"}">
+                <div class="judge-rounds">
+                  ${t.rounds.map((rr) => {
+                    const cls = (rr.submission || rr.snapshot) ? (rr.round_no === showRound ? "active" : "") : "empty";
+                    const badge = rr.snapshot ? ("#" + rr.snapshot.rank) : (rr.submission ? "已提交" : "—");
+                    return `<div class="judge-round-tab ${cls}" data-round="${rr.round_no}">R${rr.round_no}<br><small>${badge}</small></div>`;
+                  }).join("")}
+                </div>
+                <div class="judge-round-body">${roundBody(r)}</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+        $("list").innerHTML = html;
+
+        $("list").querySelectorAll(".judge-team-card").forEach((card) => {
+          const tid = card.dataset.teamId;
+          card.querySelector(".btn-toggle").onclick = () => {
+            expanded.set(tid, !(expanded.get(tid) ?? true));
+            render();
+          };
+          card.querySelectorAll(".judge-round-tab").forEach((el) => {
+            el.onclick = () => {
+              expanded.set("r_" + tid, Number(el.dataset.round));
+              render();
+            };
+          });
+        });
+      }
+
+      async function refresh() {
+        if (!META) META = await api("/public/meta");
+        DATA = await api("/judge/state");
+        $("loginPanel").style.display = "none";
+        $("main").style.display = "block";
+        fillFilter();
+        render();
+      }
+
+      $("btnLogin").onclick = async () => {
+        $("loginErr").textContent = "";
+        try {
+          await api("/auth/judge", { method: "POST", body: JSON.stringify({ password: $("pw").value }) });
+          await refresh();
+        } catch (e) { $("loginErr").textContent = e.message; }
+      };
+      $("btnLogout").onclick = async () => {
+        await api("/auth/logout", { method: "POST", body: JSON.stringify({ scope: "judge" }) });
+        $("main").style.display = "none";
+        $("loginPanel").style.display = "block";
+      };
+
+      (async () => {
+        try { await refresh(); } catch { /* stay on login */ }
+      })();
+    </script>
+  </body>
+</html>
