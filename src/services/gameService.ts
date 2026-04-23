@@ -49,6 +49,23 @@ export function startAutoSettleTimer(): void {
   }, 1000);
 }
 
+function rankMapDesc(ids: string[], valueOf: (id: string) => number): Map<string, number> {
+  const arr = ids.map((id) => ({ id, v: valueOf(id) }));
+  arr.sort((a, b) => b.v - a.v);
+  const out = new Map<string, number>();
+  let rank = 0;
+  let lastV: number | null = null;
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i].v;
+    if (lastV === null || Math.abs(v - lastV) > 1e-9) {
+      rank = i + 1;
+      lastV = v;
+    }
+    out.set(arr[i].id, rank);
+  }
+  return out;
+}
+
 /* ──────────────────────────────────────────────────────────
  * 通用工具
  * ────────────────────────────────────────────────────────── */
@@ -592,6 +609,10 @@ export function getPlayState(teamId: string): {
   lastSettled: RoundRow | null;
   submission: SubmissionRow | null;
   lastSnapshot: TeamSettlementResult | null;
+  lastRanks: {
+    tech: { rank: number; total: number } | null;
+    byCity: Partial<Record<CityId, { fit: { rank: number; total: number } | null; show: { rank: number; total: number } | null }>>;
+  } | null;
   effectiveAvailable: number;
   routeLabel: string;
   overloadHint: { kappa: number; label: string };
@@ -605,6 +626,36 @@ export function getPlayState(teamId: string): {
   const lastSettled = getLastSettledRound() ?? null;
   const sub = open ? getSubmission(teamId, open.id) : null;
   const snap = lastSettled ? getTeamSnapshot(lastSettled.id, teamId) : null;
+  const allRanks = lastSettled ? (() => {
+    const s = getState();
+    const snaps = s.snapshots.filter((x) => x.round_id === lastSettled.id);
+    const parsed = new Map<string, TeamSettlementResult>();
+    for (const row of snaps) {
+      try {
+        const obj = JSON.parse(row.payload) as TeamSettlementResult;
+        if (obj && typeof obj.teamId === "string") parsed.set(obj.teamId, obj);
+      } catch {}
+    }
+    const ids = [...parsed.keys()];
+    if (ids.length === 0) return null;
+    const techRank = rankMapDesc(ids, (id) => parsed.get(id)!.tech);
+
+    const byCity: Partial<Record<CityId, { fit: { rank: number; total: number } | null; show: { rank: number; total: number } | null }>> = {};
+    for (const c of CITY_IDS) {
+      const opened = ids.filter((id) => (parsed.get(id)!.cities?.[c]?.kCity ?? 0) > 0);
+      if (opened.length === 0) continue;
+      const fitRank = rankMapDesc(opened, (id) => parsed.get(id)!.cities[c].fitAfter);
+      const showRank = rankMapDesc(opened, (id) => parsed.get(id)!.cities[c].showAfter);
+      byCity[c] = {
+        fit: { rank: fitRank.get(teamId) ?? 0, total: opened.length },
+        show: { rank: showRank.get(teamId) ?? 0, total: opened.length },
+      };
+    }
+    return {
+      tech: { rank: techRank.get(teamId) ?? 0, total: ids.length },
+      byCity,
+    };
+  })() : null;
   const available = open ? effectiveAvailable(team, open) : team.budget;
   // 参赛端“新闻一栏”：只展示本队新闻，并保留每回合历史（最新回合在顶部）
   const MAX_NEWS = 240;
@@ -629,6 +680,7 @@ export function getPlayState(teamId: string): {
     lastSettled,
     submission: sub,
     lastSnapshot: snap,
+    lastRanks: allRanks,
     effectiveAvailable: available,
     routeLabel: V6.ROUTES[team.route].label,
     overloadHint: { kappa: 1, label: techOverloadTier(0).label },

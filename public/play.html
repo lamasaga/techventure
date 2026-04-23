@@ -76,6 +76,10 @@
               <span class="chip" id="chipCities">开通城 —</span>
               <span class="chip" id="chipEvent" style="display:none">R3 事件 —</span>
             </div>
+            <div class="route-card" id="lastRanksBox" style="display:none; margin-top:10px">
+              <strong>上轮名次速览</strong><br/>
+              <small id="lastRanksText">—</small>
+            </div>
             <p id="roundHint" class="muted" style="margin-top:10px"></p>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
               <button type="button" class="secondary" id="btnRefreshPage">刷新页面</button>
@@ -472,6 +476,25 @@
         } else {
           $("chipEvent").style.display = "none";
           $("chipEvent").title = "";
+        }
+
+        const lr = STATE.lastRanks;
+        if (lr && lr.tech && lr.tech.rank > 0) {
+          const parts = [];
+          parts.push(`Tech：第 ${lr.tech.rank} / ${lr.tech.total}`);
+          const cities = (t.opened_cities || []).filter((c) => lr.byCity && lr.byCity[c]);
+          for (const c of cities) {
+            const x = lr.byCity[c];
+            if (!x) continue;
+            const fitTxt = x.fit && x.fit.rank > 0 ? `Fit 第 ${x.fit.rank} / ${x.fit.total}` : "Fit —";
+            const showTxt = x.show && x.show.rank > 0 ? `Show 第 ${x.show.rank} / ${x.show.total}` : "Show —";
+            parts.push(`${c}：${fitTxt}，${showTxt}`);
+          }
+          $("lastRanksText").textContent = parts.join("；");
+          $("lastRanksBox").style.display = "block";
+        } else {
+          $("lastRanksBox").style.display = "none";
+          $("lastRanksText").textContent = "—";
         }
       }
 
