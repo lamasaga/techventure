@@ -35,7 +35,7 @@
             <div class="card card--compact">
               <h1>队伍管理</h1>
               <p class="muted">
-                队伍以<strong>加权总分</strong>排序（同排行榜）。添加后选手使用手机在参赛端自行选择<strong>主场城市与路线</strong>（R1）并填写队伍名和产品名。
+                队伍以<strong>累计综合得分</strong>排序（同会场榜单）。添加后选手在参赛端（手机/平板）自行选择<strong>核心市场与战略路线</strong>（第 1 轮）并填写队伍名和产品名。
               </p>
               <div class="row">
                 <div><label>编号</label><input type="text" id="nt_code" /></div>
@@ -64,16 +64,16 @@
                       <th>队名</th>
                       <th>产品名</th>
                       <th>口令</th>
-                      <th>主场</th>
-                      <th>开通城</th>
+                      <th>核心市场</th>
+                      <th>已布局市场</th>
                       <th>资金</th>
                       <th>+追加</th>
                       <th></th>
                       <th></th>
-                      <th>T</th>
-                      <th>F̄</th>
-                      <th>S̄</th>
-                      <th>加权分</th>
+                      <th>技术</th>
+                      <th>用户(均)</th>
+                      <th>展宣(均)</th>
+                      <th>综合得分</th>
                       <th>上轮</th>
                     </tr>
                   </thead>
@@ -100,11 +100,11 @@
             <div class="card card--compact">
               <h1>轮次与结算</h1>
               <p class="muted">
-                顺序：R1 → R2 → R3（可选突发事件）→ R4。每轮：<strong>开放提交</strong> → 队伍填表 → <strong>执行结算</strong>。
+                顺序：第 1 轮 → 第 2 轮 → 第 3 轮（可选市场事件）→ 第 4 轮。每轮：<strong>开放提交</strong> → 队伍填表 → <strong>执行结算</strong>。
               </p>
               <div id="roundStatusBar" class="round-status-bar">
                 <strong id="roundStatusTitle">—</strong>
-                <div class="admin-evt" id="adminEvt" style="display:none">R3 突发事件：—</div>
+                <div class="admin-evt" id="adminEvt" style="display:none">第 3 轮市场事件：—</div>
                 <div class="admin-timer" id="adminTimer" style="display:none">本轮倒计时：—</div>
                 <p class="muted" style="margin: 4px 0 0 0" id="roundStatusHint">—</p>
               </div>
@@ -125,7 +125,7 @@
 
             <div class="card card--compact" style="border-color: color-mix(in srgb, var(--tv-danger) 45%, var(--tv-border))">
               <h1>重新开始一局</h1>
-              <p class="muted">清空轮次与提交记录；默认保留队伍并重置资金与属性。勾选可删全部队伍。</p>
+              <p class="muted">清空轮次与提交记录；默认保留队伍并重置资金与产品力指标。勾选可删全部队伍。</p>
               <div class="row" style="flex-wrap: wrap; align-items: center">
                 <div>
                   <label>重开启动资金</label>
@@ -194,7 +194,7 @@
         const e = (META?.events || []).find((x) => x.id === r3.event_id);
         if (!e || r3.event_id === "none") { el.style.display = "none"; return; }
         el.style.display = "block";
-        el.textContent = `R3 突发事件：${e.label}`;
+        el.textContent = `第 3 轮市场事件：${e.label}`;
         el.title = e.desc || "";
       }
 

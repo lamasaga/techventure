@@ -22,7 +22,7 @@ export interface TeamEngineSnapshot {
   showByCity: Record<CityId, number>;
   /** 上轮排名；首轮为 null */
   lastRank: number | null;
-  /** 连续进入前 3 名的轮数（用于 follow_on 递减） */
+  /** 已弃用：曾用于 follow_on 连续递减，现恒不参与计算；读档兼容保留字段。 */
   consecutiveTop3: number;
   /** 可用资金（已含本轮 Step 0 全部到账与应扣切换/开城费的剩余） */
   availableBudget: number;
@@ -133,6 +133,7 @@ export interface TeamSettlementResult {
   investShares: { tech: number; fit: number; show: number };
   /** 本轮计算得的下轮 follow_on */
   followOnNextRound: number;
+  /** 与 consecutiveTop3 同步弃用，结算后恒为 0。 */
   consecutiveTop3After: number;
   /** 花费构成 */
   spent: {

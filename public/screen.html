@@ -18,7 +18,7 @@
             <p class="tv-screen-meta"><strong id="stageBadge">—</strong></p>
             <p class="tv-screen-updated"><strong id="roundTimer">—</strong></p>
             <p class="tv-screen-updated" id="eventHint" style="display:none; color: var(--tv-warn); font-weight: 800">本轮事件：—</p>
-            <p class="tv-screen-updated" id="viewHint">当前：三城关注度分布</p>
+            <p class="tv-screen-updated" id="viewHint">当前：三城市场声量分布</p>
             <p class="tv-screen-updated" id="updated">—</p>
           </div>
         </header>
@@ -29,7 +29,7 @@
           <div class="screen-flip-panel screen-flip-panel--pies is-active" id="panelPies" role="tabpanel" aria-hidden="false">
             <div class="screen-round-block" style="min-height: 100%">
               <h3>
-                <span id="pieTitle">三城关注度分配</span>
+                <span id="pieTitle">三城市场声量结构</span>
                 <span class="ev" id="pieEvent">—</span>
               </h3>
               <div class="screen-pies" id="pies"></div>
@@ -39,7 +39,7 @@
             <div class="screen-round-block tv-news-board" style="margin: 0; min-height: 100%">
               <h3 class="screen-board-h3">
                 <span>累计榜单</span>
-                <span class="ev" id="boardSub">按加权总分排序</span>
+                <span class="ev" id="boardSub">按累计综合得分排序</span>
               </h3>
               <div class="tv-news-cols">
                 <div class="tv-news-col">
@@ -49,8 +49,8 @@
                         <th style="width: 3em">#</th>
                         <th>队伍</th>
                         <th>产品</th>
-                        <th class="num">累计关注度</th>
-                        <th class="num">加权总分</th>
+                        <th class="num">累计市场声量</th>
+                        <th class="num">累计综合得分</th>
                         <th class="num">上轮</th>
                       </tr>
                     </thead>
@@ -64,8 +64,8 @@
                         <th style="width: 3em">#</th>
                         <th>队伍</th>
                         <th>产品</th>
-                        <th class="num">累计关注度</th>
-                        <th class="num">加权总分</th>
+                        <th class="num">累计市场声量</th>
+                        <th class="num">累计综合得分</th>
                         <th class="num">上轮</th>
                       </tr>
                     </thead>
@@ -80,12 +80,12 @@
     </div>
 
     <div class="tv-bottom-ticker" role="status" aria-live="polite">
-      <div class="tag">NEWS</div>
+      <div class="tag">快讯</div>
       <div class="rail">
         <div class="marquee" id="marquee">
           <div class="marquee__track">
-            <div class="marquee__group">等待开赛：主持开放 R1 后，底部将滚动显示上一轮结算新闻。</div>
-            <div class="marquee__group" aria-hidden="true">等待开赛：主持开放 R1 后，底部将滚动显示上一轮结算新闻。</div>
+            <div class="marquee__group">等待开赛：主持开放第 1 轮后，底部将滚动显示上一轮结算快讯。</div>
+            <div class="marquee__group" aria-hidden="true">等待开赛：主持开放第 1 轮后，底部将滚动显示上一轮结算快讯。</div>
           </div>
         </div>
       </div>
@@ -214,8 +214,8 @@
         }
         rows.push({
           dot: "background:#3d5a73;border:1px solid rgba(10,14,20,0.5)",
-          name: "未关注市场用户",
-          title: "市场注意力未指向参赛产品的份额",
+          name: "非核心触达人群",
+          title: "尚未被各队有效转化的市场声量份额",
           pct: unmetRowPct,
         });
         const legendHtml = rows
@@ -232,7 +232,7 @@
         return `
           <div class="pie-card">
             <h4>${escHtml(pie.cityId)}</h4>
-            <div class="pie-meta">规模 ${pie.marketScale.toFixed(2)} · 参赛 ${pie.kCity} 家 · 关注天花板 ${(pie.ceiling*100).toFixed(1)}%</div>
+            <div class="pie-meta">市场规模 ${pie.marketScale.toFixed(2)} · 本城参赛 ${pie.kCity} 家 · 可触达声量上限 ${(pie.ceiling*100).toFixed(1)}%</div>
             ${svg}
             <div class="pie-legend">${legendHtml}</div>
           </div>
@@ -310,7 +310,7 @@
         $("panelBoard").classList.toggle("is-active", !piesOn);
         $("panelPies").setAttribute("aria-hidden", piesOn ? "false" : "true");
         $("panelBoard").setAttribute("aria-hidden", !piesOn ? "false" : "true");
-        $("viewHint").textContent = piesOn ? "当前：三城关注度分布" : "当前：累计实时榜单";
+        $("viewHint").textContent = piesOn ? "当前：三城市场声量分布" : "当前：累计实时榜单";
       }
 
       setInterval(() => {
@@ -343,7 +343,7 @@
           : null;
         if (evObj) {
           $("eventHint").style.display = "block";
-          $("eventHint").textContent = `本轮事件：${evObj.label} · ${evObj.desc}`;
+          $("eventHint").textContent = `本轮市场事件：${evObj.label} · ${evObj.desc}`;
           $("eventHint").title = evObj.desc || "";
         } else {
           $("eventHint").style.display = "none";
@@ -364,11 +364,11 @@
           const allTeamIds = [];
           for (const p of rep.cityPies || []) for (const s of (p.slices || [])) allTeamIds.push(s.teamId);
           buildTeamColors(allTeamIds);
-          $("pieTitle").textContent = `第 ${rep.round_no} 轮 · 三城关注度分配`;
+          $("pieTitle").textContent = `第 ${rep.round_no} 轮 · 三城市场声量结构`;
           $("pieEvent").textContent = escHtml(rep.eventLabel || "无事件");
           $("pies").innerHTML = rep.cityPies.map(renderPie).join("");
         } else {
-          $("pieTitle").textContent = "三城关注度分配";
+          $("pieTitle").textContent = "三城市场声量结构";
           $("pieEvent").textContent = "等待首轮结算";
           $("pies").innerHTML = `<div class="muted">暂无饼图数据</div>`;
         }

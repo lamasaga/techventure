@@ -431,12 +431,64 @@ tbody tr:hover td {
 .tv-body--play {
   --tv-play-max: 520px;
   --tv-tabbar-h: 64px;
+  --tv-play-sidebar-w: 0px;
 }
 
 .tv-body--play .page.page--play {
   max-width: var(--tv-play-max);
   padding-top: calc(16px + var(--tv-safe-top));
   padding-bottom: calc(86px + var(--tv-safe-bottom) + var(--tv-tabbar-h));
+}
+
+/* 参赛端：工具类（跨尺寸） */
+.tv-body--play .tv-hint {
+  font-size: 12px;
+  margin-top: 6px;
+}
+.tv-body--play .tv-mt {
+  margin-top: 12px;
+}
+.tv-body--play .card {
+  overflow: hidden;
+}
+
+/* 基本信息：上轮名次速览（加大字号、减少误断行） */
+.tv-body--play .tv-last-ranks {
+  padding: 12px 14px;
+}
+.tv-body--play .tv-last-ranks__title {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--tv-text);
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+.tv-body--play .tv-last-ranks__body {
+  display: block;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--tv-text-muted);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+/* 反馈区：品牌口碑说明（不含缩写，字级略大便于阅读） */
+.tv-body--play .tv-bqi-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+@media (min-width: 768px) {
+  .tv-body--play .tv-last-ranks__body {
+    font-size: 16px;
+  }
+  .tv-body--play .tv-bqi-hint {
+    font-size: 14.5px;
+  }
 }
 
 .tv-body--play .play-hero-title {
@@ -474,6 +526,11 @@ tbody tr:hover td {
     width: 100%;
   }
 
+  .tv-body--play .tv-actions-row button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .tv-body--play .page.page--play {
     padding-left: 14px;
     padding-right: 14px;
@@ -481,6 +538,190 @@ tbody tr:hover td {
 
   .tv-body--play .row > * {
     flex: 1 1 100%;
+  }
+}
+
+/* —— 参赛端（平板优先） —— */
+@media (min-width: 768px) {
+  .tv-body--play {
+    --tv-play-max: 980px;
+    --tv-tabbar-h: 72px;
+    --tv-play-sidebar-w: 0px;
+  }
+
+  .tv-body--play .page.page--play {
+    padding-left: 22px;
+    padding-right: 28px;
+    padding-top: calc(20px + var(--tv-safe-top));
+    padding-bottom: calc(86px + var(--tv-safe-bottom) + var(--tv-tabbar-h));
+  }
+
+  .tv-body--play .card {
+    padding: 22px 22px;
+    margin-bottom: 18px;
+  }
+
+  .tv-body--play .muted,
+  .tv-body--play .err {
+    font-size: 15px;
+  }
+
+  .tv-body--play label {
+    font-size: 14px;
+    margin: 14px 0 8px;
+  }
+
+  /* iPad 等平台避免输入时自动放大：保持 16px */
+  .tv-body--play input[type="text"],
+  .tv-body--play input[type="password"],
+  .tv-body--play input[type="number"],
+  .tv-body--play select,
+  .tv-body--play textarea {
+    font-size: 16px;
+    padding: 13px 16px;
+    border-radius: 16px;
+  }
+
+  .tv-body--play textarea {
+    min-height: 84px;
+  }
+
+  .tv-body--play button,
+  .tv-body--play .btn {
+    min-height: 48px;
+    padding: 12px 22px;
+    font-size: 16px;
+  }
+
+  .tv-body--play .tv-tabbar {
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: 0;
+    padding-bottom: calc(var(--tv-safe-bottom));
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-content: stretch;
+  }
+
+  .tv-body--play .tv-tabbtn {
+    min-height: 52px;
+    border-radius: 16px;
+    justify-content: center;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .tv-body--play .tv-tabbtn .t {
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+
+  /* 资金分配：平板默认单栏（竖屏友好） */
+  .tv-body--play .tv-funds-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px 18px;
+    align-items: start;
+    margin-top: 10px;
+  }
+
+  .tv-body--play .tv-funds-col {
+    min-width: 0;
+  }
+
+  .tv-body--play #cityInvestWrap {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .tv-body--play #btnSubmit {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tv-body--play .stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .tv-body--play .stat-cell .val {
+    font-size: 20px;
+  }
+
+  .tv-body--play .city-toggle label {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .tv-body--play .city-invest-row label {
+    font-size: 13px;
+  }
+
+  .tv-body--play .sum-hint {
+    font-size: 13px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tv-body--play .page.page--play {
+    padding-left: 34px;
+    padding-right: 34px;
+  }
+}
+
+/* —— 参赛端（平板横屏 / 更宽屏）：侧栏 + 两栏 —— */
+@media (min-width: 980px) and (orientation: landscape) {
+  .tv-body--play {
+    --tv-play-sidebar-w: 240px;
+  }
+
+  .tv-body--play .page.page--play {
+    padding-left: calc(28px + var(--tv-play-sidebar-w));
+    padding-right: 28px;
+    padding-bottom: calc(28px + var(--tv-safe-bottom));
+  }
+
+  .tv-body--play .tv-tabbar {
+    left: 0;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    height: auto;
+    width: var(--tv-play-sidebar-w);
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-top: calc(14px + var(--tv-safe-top));
+    padding-bottom: calc(14px + var(--tv-safe-bottom));
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-content: start;
+    background: color-mix(in srgb, var(--tv-bg) 82%, transparent);
+    border-right: 1px solid color-mix(in srgb, var(--tv-border-strong) 75%, transparent);
+  }
+
+  .tv-body--play .tv-tabbtn {
+    justify-content: flex-start;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .tv-body--play .tv-funds-grid {
+    grid-template-columns: minmax(300px, 0.95fr) minmax(340px, 1.05fr);
+  }
+
+  .tv-body--play #cityInvestWrap {
+    max-height: min(44vh, 420px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 6px;
+  }
+
+  .tv-body--play #btnSubmit {
+    position: sticky;
+    bottom: 12px;
   }
 }
 
@@ -865,8 +1106,15 @@ tbody tr:hover td {
   color: var(--tv-text-tertiary);
 }
 
-.tv-body--play #btnLogout {
-  margin-top: 18px;
+/* 参赛端：页内操作区（刷新/退出等） */
+.tv-body--play .tv-play-actions {
+  margin-top: 12px;
+}
+.tv-body--play .tv-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* —— 参赛端底部分页栏 —— */

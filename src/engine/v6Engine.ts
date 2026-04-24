@@ -839,7 +839,7 @@ export function settleRoundV6(ctx: SettlementContext): SettlementOutput {
       declarationHits: hits,
       investShares: { tech: shares.tech, fit: shares.fit, show: shares.show },
       followOnNextRound: 0,
-      consecutiveTop3After: w.snap.consecutiveTop3,
+      consecutiveTop3After: 0,
       spent: {
         tech: techInvestRaw,
         fit: invFitSpent,
@@ -856,7 +856,7 @@ export function settleRoundV6(ctx: SettlementContext): SettlementOutput {
     });
   }
 
-  // —— Step 9：排名、加权累计、follow_on
+  // —— Step 9：排名、加权累计、follow_on（仅按本轮名次，无连续前列追加递减）
   results.sort((a, b) => b.effAttention - a.effAttention);
   const weight = V6.ROUND_WEIGHTS[roundNo] ?? 0.25;
   results.forEach((r, i) => {
@@ -864,15 +864,11 @@ export function settleRoundV6(ctx: SettlementContext): SettlementOutput {
     r.weightedRoundScore = r.effAttention * weight;
     r.weightedTotal = r2(r.weightedTotal + r.weightedRoundScore);
     r.attentionTotal = r2(r.attentionTotal + r.effAttention);
-    const top3 = r.rank <= 3;
-    r.consecutiveTop3After = top3 ? r.consecutiveTop3After + 1 : 0;
+    r.consecutiveTop3After = 0;
 
     if (roundNo < V6.ROUNDS) {
       const base = Math.max(0, V6.FOLLOW_ON.maxBase - r.rank);
-      let penalty = 0;
-      if (r.consecutiveTop3After >= 3) penalty = V6.FOLLOW_ON.consecutive3Decay;
-      else if (r.consecutiveTop3After === 2) penalty = V6.FOLLOW_ON.consecutive2Decay;
-      r.followOnNextRound = Math.max(V6.FOLLOW_ON.floor, base + penalty);
+      r.followOnNextRound = Math.max(V6.FOLLOW_ON.floor, base);
     } else {
       r.followOnNextRound = 0;
     }
@@ -941,7 +937,7 @@ export function settleRoundV6(ctx: SettlementContext): SettlementOutput {
         body: say2(
           `rs-${w.snap.id}-${roundNo}`,
           `《${w.snap.productName}》本回合将主航道收束到 ${V6.ROUTES[w.route].label}，为下一阶段重定调。`,
-          `《${w.snap.productName}》在打法上更强调 ${V6.ROUTES[w.route].label} 的叙事：${V6.ROUTES[w.route].tagline}。`,
+          `《${w.snap.productName}》在打法上更强调 ${V6.ROUTES[w.route].label}：${V6.ROUTES[w.route].brief}`,
         ),
         teamIds: [w.snap.id],
       });
@@ -953,11 +949,11 @@ export function settleRoundV6(ctx: SettlementContext): SettlementOutput {
     pushNews({
       roundNo,
       kind: "rank_top",
-      headline: `R${roundNo} 冠军 · 【${champ.displayName}】拿下全场关注度`,
+      headline: `R${roundNo} 冠军 · 【${champ.displayName}】拿下全场最高市场声量`,
       body: say2(
         `rt-${champ.teamId}-${roundNo}`,
-        `《${champ.productName}》以本轮最强综合表现站上榜首，把全场关注收入囊中。`,
-        `《${champ.productName}》在有效关注度上拔得头筹，本回合的赢家写得很清楚。`,
+        `《${champ.productName}》以本轮最强综合表现站上榜首，把全场市场声量收入囊中。`,
+        `《${champ.productName}》在有效市场声量上拔得头筹，本回合的赢家写得很清楚。`,
       ),
       teamIds: [champ.teamId],
     });
@@ -969,7 +965,7 @@ export function settleRoundV6(ctx: SettlementContext): SettlementOutput {
       pushNews({
         roundNo,
         kind: "ceiling_boost",
-        headline: `${pie.cityId}市关注度天花板冲至 ${(pie.ceiling * 100).toFixed(0)}%`,
+        headline: `${pie.cityId}市可触达声量上限冲至 ${(pie.ceiling * 100).toFixed(0)}%`,
         body: say2(
           `cb-${pie.cityId}-${roundNo}`,
           `${pie.cityId}市多队同场竞逐，把可承载的舆论注意力也一并托高。`,

@@ -36,9 +36,9 @@
       <div id="main" style="display: none">
         <div class="card">
           <h1 class="play-hero-title">投资人席 · 决策一览</h1>
-          <p class="muted" id="headHint">按加权总分排序，可切换筛选路线；点击各回合查看当轮详情。</p>
+          <p class="muted" id="headHint">按累计综合得分排序，可切换筛选战略路线；点击各回合查看当轮详情。</p>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin: 8px 0 0 0">
-            <span class="chip" id="r3EventHint" style="display:none">R3 事件 —</span>
+            <span class="chip" id="r3EventHint" style="display:none">第 3 轮市场事件 —</span>
           </div>
           <div class="judge-filter" id="routeFilter"></div>
           <div class="stat-grid">
@@ -63,21 +63,33 @@
       let activeRoute = "ALL";
       const expanded = new Map();
 
+      /** 与参赛端 bqi 规则展示保持一致（将内部 rule 映射为中文） */
+      function bqiRuleLabel(k) {
+        return ({
+          techLastThird: "技术指标掉队",
+          fitLastThird: "理解用户脱节",
+          marketingOver: "宣传展示反噬",
+          allRound: "稳扎稳打",
+          declarationReward: "产品主张一致",
+          declarationDeviationMinor: "产品主张偏离",
+        }[k] || "市场反馈");
+      }
+
       const KIND_LABEL = {
         hot_pulse: "爆款热搜",
         pathfinder_boom: "独占红利",
         pathfinder_crowd: "扎堆警报",
         marketing_over: "过度营销",
-        declaration_win: "宣言兑现",
-        declaration_miss: "宣言脱节",
+        declaration_win: "主张兑现",
+        declaration_miss: "主张偏离",
         tech_last: "技术垫底",
         fit_last: "用户脱节",
         all_round: "全能玩家",
-        city_debut: "首开新城",
-        route_switch: "路线切换",
+        city_debut: "首进新市场",
+        route_switch: "战略路线调整",
         ceiling_boost: "城市过热",
         rank_top: "登顶冠军",
-        event_r3: "突发事件",
+        event_r3: "第 3 轮市场事件",
       };
 
       async function api(path, opt) {
@@ -112,14 +124,14 @@
           const fit = sub.invest_fit_by_city?.[c] ?? 0;
           const show = sub.invest_show_by_city?.[c] ?? 0;
           return `<tr>
-            <td>${c}${sub.opened_cities.includes(c) ? "" : "<span class=\"muted\"> · 未开通</span>"}</td>
+            <td>${c}${sub.opened_cities.includes(c) ? "" : "<span class=\"muted\"> · 未布局</span>"}</td>
             <td class="num">${fmt(fit, 1)}</td>
             <td class="num">${fmt(show, 1)}</td>
           </tr>`;
         }).join("");
         return `
           <table class="invest-mini city-invest-table">
-            <thead><tr><th>城市</th><th class="num">Fit 投入</th><th class="num">Show 投入</th></tr></thead>
+            <thead><tr><th>城市</th><th class="num">理解用户投入</th><th class="num">宣传展示投入</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         `;
@@ -137,11 +149,11 @@
           const routeLabel = (META.routes.find((x) => x.id === s.route) || {}).label || s.route;
           parts.push(`
             <div class="kv">
-              <dt>路线</dt><dd>${escHtml(routeLabel)}</dd>
-              <dt>经营城市</dt><dd>${escHtml(s.opened_cities.join(" · "))}</dd>
-              <dt>技术投入</dt><dd>${fmt(s.invest_tech, 1)}</dd>
-              <dt>切换/开城</dt><dd>${fmt(s.switch_cost_paid, 1)} / ${fmt(s.expand_cost_paid, 1)}</dd>
-              <dt>产品宣言</dt><dd>${escHtml(s.declaration || "（空）")}</dd>
+              <dt>战略路线</dt><dd>${escHtml(routeLabel)}</dd>
+              <dt>业务覆盖城市</dt><dd>${escHtml(s.opened_cities.join(" · "))}</dd>
+              <dt>技术指标投入</dt><dd>${fmt(s.invest_tech, 1)}</dd>
+              <dt>战略调整 / 新市场拓展</dt><dd>${fmt(s.switch_cost_paid, 1)} / ${fmt(s.expand_cost_paid, 1)}</dd>
+              <dt>产品主张</dt><dd>${escHtml(s.declaration || "（空）")}</dd>
             </div>
             ${investTable(s)}
           `);
@@ -153,15 +165,15 @@
           parts.push(`
             <div class="stat-grid" style="margin-top:8px">
               <div class="stat-cell sm"><div class="lbl">排名</div><div class="val">第 ${snap.rank}</div></div>
-              <div class="stat-cell sm"><div class="lbl">本轮关注度</div><div class="val">${fmt(snap.effAttention, 1)}</div></div>
-              <div class="stat-cell sm"><div class="lbl">本轮加权</div><div class="val">${fmt(snap.weightedRoundScore, 2)}</div></div>
-              <div class="stat-cell sm"><div class="lbl">BQI</div><div class="val">${fmt(snap.bqi, 2)}${snap.bqiClipped ? " *" : ""}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本轮市场声量</div><div class="val">${fmt(snap.effAttention, 1)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本轮综合得分</div><div class="val">${fmt(snap.weightedRoundScore, 2)}</div></div>
+              <div class="stat-cell sm" title="品牌口碑指数：综合反映品牌言论、产品主张与资源投入是否让市场“信得过”。"><div class="lbl">品牌口碑（BQI）</div><div class="val">${fmt(snap.bqi, 2)}${snap.bqiClipped ? " *" : ""}</div></div>
             </div>
             <div class="kv" style="margin-top:6px">
-              <dt>Tech</dt><dd>${fmt(snap.tech, 2)} (${snap.deltaTech >= 0 ? "+" : ""}${fmt(snap.deltaTech, 2)})</dd>
-              <dt>Hot Pulse</dt><dd>${snap.hotpulseLabel || (snap.hotpulse > 0 ? "+"+fmt(snap.hotpulse,1) : "—")}</dd>
-              <dt>Momentum</dt><dd>${fmt(snap.momentum, 2)}</dd>
-              <dt>投入占比</dt><dd>T ${(snap.investShares.tech*100).toFixed(0)}% · F ${(snap.investShares.fit*100).toFixed(0)}% · S ${(snap.investShares.show*100).toFixed(0)}%</dd>
+              <dt>技术指标</dt><dd>${fmt(snap.tech, 2)} (${snap.deltaTech >= 0 ? "+" : ""}${fmt(snap.deltaTech, 2)})</dd>
+              <dt>话题声量</dt><dd>${snap.hotpulseLabel || (snap.hotpulse > 0 ? "+"+fmt(snap.hotpulse,1) : "—")}</dd>
+              <dt>市场动量</dt><dd>${fmt(snap.momentum, 2)}</dd>
+              <dt>投入结构</dt><dd>技术 ${(snap.investShares.tech*100).toFixed(0)}% · 用户 ${(snap.investShares.fit*100).toFixed(0)}% · 展宣 ${(snap.investShares.show*100).toFixed(0)}%</dd>
             </div>
           `);
           if (snap.bqiContribs && snap.bqiContribs.length) {
@@ -169,7 +181,7 @@
               snap.bqiContribs.map((x) => {
                 const cls = x.delta >= 0 ? "good" : "bad";
                 const d = (x.delta >= 0 ? "+" : "") + (x.delta * 100).toFixed(1) + "%";
-                return `<li class="${cls}"><strong>${escHtml(x.rule)}</strong> ${d} — ${escHtml(x.note)}</li>`;
+                return `<li class="${cls}"><strong>${escHtml(bqiRuleLabel(x.rule))}</strong> ${d} — ${escHtml(x.note)}</li>`;
               }).join("") + `</ul>`);
           }
         }
@@ -190,11 +202,11 @@
         const ev = r3 && r3.event_id && r3.event_id !== "none" ? META.events.find((e) => e.id === r3.event_id) : null;
         if (ev && open && open.round_no === 3) {
           $("r3EventHint").style.display = "inline-flex";
-          $("r3EventHint").textContent = `R3 事件：${ev.label}`;
+          $("r3EventHint").textContent = `第 3 轮市场事件：${ev.label}`;
           $("r3EventHint").title = ev.desc || "";
         } else if (ev && r3 && r3.status === "settled") {
           $("r3EventHint").style.display = "inline-flex";
-          $("r3EventHint").textContent = `R3 事件：${ev.label}（已生效）`;
+          $("r3EventHint").textContent = `第 3 轮市场事件：${ev.label}（已生效）`;
           $("r3EventHint").title = ev.desc || "";
         } else {
           $("r3EventHint").style.display = "none";
@@ -215,8 +227,8 @@
                   <div class="product">产品：${escHtml(t.product_name || "—")}</div>
                   <div class="meta" style="margin-top:4px">
                     <span class="chip">${escHtml(t.route_label)}</span>
-                    <span class="chip">主场 ${escHtml(t.home_city)}</span>
-                    <span class="chip">加权 ${fmt(t.weighted_total, 2)}</span>
+                    <span class="chip">核心市场 ${escHtml(t.home_city)}</span>
+                    <span class="chip">累计综合得分 ${fmt(t.weighted_total, 2)}</span>
                     <span class="chip">上轮 ${t.last_rank ?? "—"}</span>
                   </div>
                 </div>

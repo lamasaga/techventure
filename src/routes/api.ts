@@ -70,6 +70,7 @@ apiRouter.get("/public/meta", (_req, res) => {
       id,
       label: v.label,
       tagline: v.tagline,
+      brief: v.brief,
       rTech: v.rTech,
       rFit: v.rFit,
       rShow: v.rShow,

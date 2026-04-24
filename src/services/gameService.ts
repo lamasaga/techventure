@@ -368,7 +368,7 @@ export function submitPlay(teamId: string, raw: PlaySubmitPayload): { ok: true }
     // R1：主场与路线由选手选择（仅允许选择 1 个城市，且不产生开城费）。
     const oc = asCityList(raw.openedCities);
     if (!(Array.isArray(raw.openedCities) && oc.length === 1)) {
-      return { ok: false, error: "R1 必须且只能选择 1 个经营城市（将成为主场）" };
+      return { ok: false, error: "第 1 轮必须且只能选择 1 个业务覆盖城市（作为核心市场/总部所在）" };
     }
   }
   const openedCities = asCityList(raw.openedCities);
@@ -401,7 +401,7 @@ export function submitPlay(teamId: string, raw: PlaySubmitPayload): { ok: true }
   if (totalSpend > available + EPS) {
     return {
       ok: false,
-      error: `本轮投入合计（含切换/开城费）${round1(totalSpend)} 超过可用上限 ${available}`,
+      error: `本轮投入合计（含战略路线调整成本与新市场拓展成本）${round1(totalSpend)} 超过可用上限 ${available}`,
     };
   }
 

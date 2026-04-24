@@ -45,6 +45,7 @@ export interface TeamRow {
   weighted_total: number;
 
   last_rank: number | null;
+  /** 已弃用：曾用于追加投资连续递减；现恒写 0，读档兼容。 */
   consecutive_top3: number;
 }
 

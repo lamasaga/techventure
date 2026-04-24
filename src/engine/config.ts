@@ -129,6 +129,8 @@ export const V6 = {
     TECH: {
       label: "技术驱动型",
       tagline: "埋头研发 · 技术为本",
+      /** 所有对外展示用同一套「一句话」说明（参赛端/主持端/新闻叙事等） */
+      brief: "聚焦研发与产品落地，以技术能力建立长期壁垒。",
       rTech: 1.25,
       rFit: 1.00,
       rShow: 1.00,
@@ -137,6 +139,7 @@ export const V6 = {
     USER: {
       label: "用户深耕型",
       tagline: "听懂用户 · 精准击中",
+      brief: "围绕真实场景与关键需求做深做细，把体验与口碑变成增长。",
       rTech: 1.00,
       rFit: 1.20,
       rShow: 1.00,
@@ -146,6 +149,7 @@ export const V6 = {
     BRAND: {
       label: "品牌传播型",
       tagline: "品牌起势 · 声量登顶",
+      brief: "以品牌与传播打开声量，更容易在舆论与渠道侧形成破圈。",
       rTech: 1.00,
       rFit: 1.00,
       rShow: 1.25,
@@ -154,6 +158,7 @@ export const V6 = {
     PATHFINDER: {
       label: "破局奇兵",
       tagline: "小众路线 · 独占红利",
+      brief: "走差异化/细分竞争路线，在格局更有利时更容易把优势滚大。",
       rTech: 1.00,
       rFit: 1.00,
       rShow: 1.00,
@@ -162,6 +167,7 @@ export const V6 = {
   } as Record<RouteId, {
     label: string;
     tagline: string;
+    brief: string;
     rTech: number;
     rFit: number;
     rShow: number;
@@ -172,10 +178,9 @@ export const V6 = {
     crowdCurve?: Record<number, number>;
   }>,
 
+  /** 投资人追加：仅随本轮排名线性变化（第 1 名 base 最高），不含「连续霸榜再递减」。 */
   FOLLOW_ON: {
     maxBase: 15,
-    consecutive2Decay: -3,
-    consecutive3Decay: -5,
     floor: 3,
   },
 

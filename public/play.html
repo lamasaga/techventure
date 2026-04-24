@@ -67,25 +67,29 @@
             <div class="stat-grid">
               <div class="stat-cell sm"><div class="lbl">可用资金</div><div class="val money" id="headBudget">—</div></div>
               <div class="stat-cell sm"><div class="lbl">上轮排名</div><div class="val" id="headRank">—</div></div>
-              <div class="stat-cell sm"><div class="lbl">累计加权分</div><div class="val" id="headWeighted">—</div></div>
-              <div class="stat-cell sm"><div class="lbl">Tech</div><div class="val" id="headTech">—</div></div>
+              <div class="stat-cell sm"><div class="lbl">累计综合得分</div><div class="val" id="headWeighted">—</div></div>
+              <div class="stat-cell sm"><div class="lbl">技术指标</div><div class="val" id="headTech">—</div></div>
+              <div class="stat-cell sm"><div class="lbl">理解用户（平均）</div><div class="val" id="headFit">—</div></div>
+              <div class="stat-cell sm"><div class="lbl">宣传展示（平均）</div><div class="val" id="headShow">—</div></div>
             </div>
             <div style="display:flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
               <span class="chip" id="chipRoute">—</span>
-              <span class="chip" id="chipHome">主场 —</span>
-              <span class="chip" id="chipCities">开通城 —</span>
-              <span class="chip" id="chipEvent" style="display:none">R3 事件 —</span>
+              <span class="chip" id="chipHome">核心市场 —</span>
+              <span class="chip" id="chipCities">已布局市场 —</span>
+              <span class="chip" id="chipEvent" style="display:none">第 3 轮市场事件 —</span>
             </div>
-            <div class="route-card" id="lastRanksBox" style="display:none; margin-top:10px">
-              <strong>上轮名次速览</strong><br/>
-              <small id="lastRanksText">—</small>
+            <div class="route-card tv-last-ranks" id="lastRanksBox" style="display:none; margin-top:10px">
+              <div class="tv-last-ranks__title">上轮名次速览</div>
+              <div class="tv-last-ranks__body" id="lastRanksText">—</div>
             </div>
             <p id="roundHint" class="muted" style="margin-top:10px"></p>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">
+          </div>
+          <div class="card card--nested tv-play-actions">
+            <div class="tv-actions-row">
               <button type="button" class="secondary" id="btnRefreshPage">刷新页面</button>
+              <button type="button" class="secondary" id="btnLogout">退出登录</button>
             </div>
           </div>
-          <button type="button" class="secondary" id="btnLogout">退出登录</button>
         </div>
 
         <!-- 分页：资金分配 -->
@@ -95,36 +99,42 @@
             <h2 id="decisionTitle">本轮决策</h2>
             <p class="muted" id="decisionHint"></p>
 
-            <label>战略路线</label>
-            <select id="selRoute"></select>
-            <div id="routeDesc" class="route-card"></div>
+            <div class="tv-funds-grid">
+              <div class="tv-funds-col tv-funds-col--left">
+                <label>战略路线</label>
+                <select id="selRoute"></select>
+                <div id="routeDesc" class="route-card"></div>
 
-            <label>本轮经营城市（主场不可关闭）</label>
-            <div class="city-toggle" id="cityToggle"></div>
-            <p class="muted" style="font-size:12px; margin-top:6px" id="cityHint"></p>
+                <label>本轮业务覆盖城市（核心市场不可退出）</label>
+                <div class="city-toggle" id="cityToggle"></div>
+                <p class="muted tv-hint" id="cityHint"></p>
 
-            <label style="margin-top: 14px">技术研发投入（全局）</label>
-            <input type="number" id="invTech" min="0" step="0.1" value="0" />
-            <p class="muted" style="font-size: 12px; margin-top: 2px" id="techHint"></p>
+                <label class="tv-mt">本轮产品主张（≤60 字）</label>
+                <textarea id="declaration" maxlength="60" rows="2" placeholder="如：为极客打造更硬核的推理引擎"></textarea>
+                <p class="muted tv-hint" id="declHint"></p>
+              </div>
 
-            <label style="margin-top: 12px">分城投入（用户匹配 / 展示宣传）</label>
-            <div id="cityInvestWrap"></div>
+              <div class="tv-funds-col tv-funds-col--right">
+                <label class="tv-mt">全局研发投入（提升技术指标）</label>
+                <input type="number" id="invTech" min="0" step="0.1" value="0" />
+                <p class="muted tv-hint" id="techHint"></p>
 
-          <label style="margin-top: 12px">产品调整宣言（≤60 字）</label>
-          <textarea id="declaration" maxlength="60" rows="2" placeholder="如：为极客打造更硬核的推理引擎"></textarea>
-            <p class="muted" style="font-size: 12px; margin-top: 2px" id="declHint"></p>
+                <label class="tv-mt">分城市场投入（理解用户 / 宣传展示）</label>
+                <div id="cityInvestWrap"></div>
 
-            <div class="sum-hint">
-              <span>本轮可用：<span class="money" id="capVal">0</span>
-                <span class="muted">（含切换费 <span id="costSwitch">0</span> · 开城费 <span id="costExpand">0</span>）</span>
-              </span>
-              <span>已用：<span id="sumUsed" class="money">0</span> · 剩余：<span id="sumRemain" class="money">0</span></span>
+                <div class="sum-hint">
+                  <span>本轮可用：<span class="money" id="capVal">0</span>
+                    <span class="muted">（含战略路线调整 <span id="costSwitch">0</span> · 新市场拓展 <span id="costExpand">0</span>）</span>
+                  </span>
+                  <span>已用：<span id="sumUsed" class="money">0</span> · 剩余：<span id="sumRemain" class="money">0</span></span>
+                </div>
+                <p class="err" id="submitErr"></p>
+                <button type="button" id="btnSubmit">提交本轮决策</button>
+                <p class="muted tv-hint" style="margin-top: 8px">
+                  未用完的资金会自动进入储备（下一轮开始 +15% 利息）。
+                </p>
+              </div>
             </div>
-            <p class="err" id="submitErr"></p>
-            <button type="button" id="btnSubmit">提交本轮决策</button>
-            <p class="muted" style="font-size: 12px; margin-top: 8px">
-              未用完的资金会自动进入储备（下一轮开始 +15% 利息）。
-            </p>
           </div>
           <div class="card" id="decisionClosedPanel" style="display:none">
             <h2>资金分配</h2>
@@ -139,9 +149,9 @@
             <h2 id="reportTitle">上轮结算汇报</h2>
           <div class="stat-grid">
             <div class="stat-cell"><div class="lbl">本轮排名</div><div class="val" id="rRank">—</div></div>
-            <div class="stat-cell"><div class="lbl">本轮关注度</div><div class="val" id="rEff">—</div></div>
-            <div class="stat-cell"><div class="lbl">本轮加权分</div><div class="val" id="rWeighted">—</div></div>
-            <div class="stat-cell"><div class="lbl">累计加权分</div><div class="val" id="rWeightedTotal">—</div></div>
+            <div class="stat-cell"><div class="lbl">本轮市场声量</div><div class="val" id="rEff">—</div></div>
+            <div class="stat-cell"><div class="lbl">本轮综合得分</div><div class="val" id="rWeighted">—</div></div>
+            <div class="stat-cell"><div class="lbl">累计综合得分</div><div class="val" id="rWeightedTotal">—</div></div>
           </div>
 
           <div class="report-section" id="cashflowSection" style="display:none">
@@ -150,16 +160,16 @@
           </div>
 
           <div class="report-section" id="crowdSection" style="display:none">
-            <h3>赛道拥挤度提示</h3>
+            <h3>细分赛道竞争提示</h3>
             <ul class="report-bullets" id="crowdList"></ul>
           </div>
 
           <div class="report-section">
-            <h3>属性成长</h3>
+            <h3>产品力提升</h3>
             <div class="kv">
-              <dt>技术力 Tech</dt><dd id="rTech">—</dd>
-              <dt>三城平均 Fit</dt><dd id="rFit">—</dd>
-              <dt>三城平均 Show</dt><dd id="rShow">—</dd>
+              <dt>技术指标</dt><dd id="rTech">—</dd>
+              <dt>理解用户（平均）</dt><dd id="rFit">—</dd>
+              <dt>宣传展示（平均）</dt><dd id="rShow">—</dd>
             </div>
           </div>
 
@@ -183,12 +193,12 @@
           </div>
 
           <div class="report-section" id="bqiSection" style="display:none">
-            <h3>口碑与宣传问题</h3>
+            <h3>品牌口碑与传播</h3>
             <ul class="report-bullets" id="prList"></ul>
           </div>
 
           <div class="report-section" id="govSection" style="display:none">
-            <h3>公司治理与发展</h3>
+            <h3>经营与战略执行</h3>
             <ul class="report-bullets" id="govList"></ul>
           </div>
         </div>
@@ -286,10 +296,10 @@
       function describeRoute(id) {
         const r = META.routes.find((x) => x.id === id);
         if (!r) return "";
-        // 参赛端不展示倍率/阈值等核心机制；只给路线叙事与操作层提示。
+        const one = r.brief || (r.tagline ? String(r.tagline).replace(/·/g, "，") + "。" : "");
         const hints = [];
-        if (r.canTriggerHotPulse) hints.push("更容易引发公众热议");
-        return `<strong>${r.label}</strong><br/><small>${r.tagline}</small>${hints.length ? `<br/><small>${hints.join(" · ")}</small>` : ""}`;
+        if (r.canTriggerHotPulse) hints.push("在传播侧更容易出现破圈与话题爆发");
+        return `<strong>${r.label}</strong><br/><small>${one}</small>${hints.length ? `<br/><small>${hints.join(" · ")}</small>` : ""}`;
       }
 
       function renderCityToggle(team, selected, roundNo) {
@@ -319,7 +329,9 @@
           lb.appendChild(cb);
           const cityLbl = document.createElement("span");
           const cityMeta = META.cities.find((x) => x.id === c);
-          cityLbl.textContent = isR1 ? `${c} · 选择为主场` : (isHome ? `${c} · 主场` : (opened ? `${c} · 已开通` : (canExpand ? `${c} · 新开 -${META.economy.CITY_EXPAND_COST}` : `${c} · 锁定`)));
+          cityLbl.textContent = isR1
+            ? `${c} · 选为核心市场`
+            : (isHome ? `${c} · 核心市场` : (opened ? `${c} · 已在营` : (canExpand ? `${c} · 可进入新市场（成本 ${META.economy.CITY_EXPAND_COST}）` : `${c} · 未开放`)));
           lb.appendChild(cityLbl);
           if (cb.checked) lb.classList.add("on");
           cb.addEventListener("change", () => { if (cb.checked) lb.classList.add("on"); else lb.classList.remove("on"); });
@@ -337,8 +349,8 @@
           wrap.querySelectorAll('input[type="checkbox"]').forEach((el) => el.addEventListener("change", enforce));
         }
         const hintParts = [];
-        if (roundNo === 1) hintParts.push("R1：请选择 1 个城市作为主场。");
-        if (roundNo >= 2) hintParts.push("R2–R4：可以选择开拓新城市（会产生成本）。");
+        if (roundNo === 1) hintParts.push("第 1 轮：请选择 1 个城市作为核心市场（公司总部/主战场）。");
+        if (roundNo >= 2) hintParts.push("第 2–4 轮：可进入新城市拓展业务，并产生新市场拓展成本。");
         $("cityHint").textContent = hintParts.join("  ");
       }
 
@@ -354,7 +366,7 @@
         const wrap = $("cityInvestWrap");
         wrap.innerHTML = "";
         if (!selectedCities.length) {
-          wrap.innerHTML = '<p class="muted" style="font-size:12px">请先勾选经营城市。</p>';
+          wrap.innerHTML = '<p class="muted" style="font-size:12px">请先选择本轮业务覆盖城市。</p>';
           return;
         }
         for (const c of selectedCities) {
@@ -362,12 +374,12 @@
           row.className = "city-invest-row";
           const left = document.createElement("div");
           left.innerHTML = `
-            <label>${c} · 用户匹配 Fit</label>
+            <label>${c} · 理解用户</label>
             <input type="number" data-city="${c}" data-kind="fit" min="0" step="0.1" value="${(prefill.fit[c] ?? 0)}" />
           `;
           const right = document.createElement("div");
           right.innerHTML = `
-            <label>${c} · 展示宣传 Show</label>
+            <label>${c} · 宣传展示</label>
             <input type="number" data-city="${c}" data-kind="show" min="0" step="0.1" value="${(prefill.show[c] ?? 0)}" />
           `;
           row.appendChild(left);
@@ -403,7 +415,7 @@
         const route = $("selRoute").value;
         const cities = getSelectedCities();
         if (r.round_no === 1 && cities.length !== 1) {
-          $("submitErr").textContent = "R1 必须且只能选择 1 个主场城市。";
+          $("submitErr").textContent = "第 1 轮必须且只能选择 1 个核心市场城市。";
         }
         const { switchCost, expandCost } = computeCosts(team, r.round_no, cities, route);
         const invTech = Math.max(0, r1($("invTech").value || 0));
@@ -419,7 +431,7 @@
         $("sumUsed").textContent = fmt(used);
         $("sumRemain").textContent = fmt(remain);
         $("sumRemain").className = remain < -0.05 ? "money over" : "money";
-        $("submitErr").textContent = remain < -0.05 ? "投入合计（含切换/开城费）超过可用上限。" : "";
+        $("submitErr").textContent = remain < -0.05 ? "投入合计（含战略路线调整与新市场拓展成本）超过可用上限。" : "";
       }
 
       function onCitiesChanged() {
@@ -444,11 +456,11 @@
           }
         }
         const bits = [];
-        if (hits.tech.length) bits.push(`命中技术类（${hits.tech.join("、")}）`);
-        if (hits.fit.length) bits.push(`命中用户类（${hits.fit.join("、")}）`);
-        if (hits.show.length) bits.push(`命中品牌类（${hits.show.join("、")}）`);
+        if (hits.tech.length) bits.push(`命中「技术指标」相关词（${hits.tech.join("、")}）`);
+        if (hits.fit.length) bits.push(`命中「理解用户」相关词（${hits.fit.join("、")}）`);
+        if (hits.show.length) bits.push(`命中「宣传展示」相关词（${hits.show.join("、")}）`);
         if (hits.vision.length) bits.push(`命中全能类（${hits.vision.join("、")}）`);
-        $("declHint").textContent = bits.length ? bits.join("；") : "提示：宣言尽量写清“为谁解决什么问题”，并与本轮投入方向一致。";
+        $("declHint").textContent = bits.length ? bits.join("；") : "提示：产品主张尽量写清“为谁解决什么问题”，并与本轮市场投入方向一致。";
       }
 
       function renderHeader() {
@@ -459,16 +471,23 @@
         $("headRank").textContent = t.last_rank ?? "—";
         $("headWeighted").textContent = fmt2(t.weighted_total);
         $("headTech").textContent = fmt2(t.tech);
-        $("chipRoute").textContent = `路线：${STATE.routeLabel}`;
-        $("chipHome").textContent = `主场：${t.homeCity}`;
-        $("chipCities").textContent = `开通城：${t.opened_cities.join(" · ")}`;
+        {
+          const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+          const fitArr = CITY_IDS.map((c) => Number(t.fit_by_city?.[c] ?? 0));
+          const showArr = CITY_IDS.map((c) => Number(t.show_by_city?.[c] ?? 0));
+          $("headFit").textContent = fmt2(avg(fitArr));
+          $("headShow").textContent = fmt2(avg(showArr));
+        }
+        $("chipRoute").textContent = `战略路线：${STATE.routeLabel}`;
+        $("chipHome").textContent = `核心市场：${t.homeCity}`;
+        $("chipCities").textContent = `已布局市场：${t.opened_cities.join(" · ")}`;
         const open = STATE.openRound;
         const ev = open && open.round_no === 3 && open.event_id && open.event_id !== "none"
           ? META.events.find((e) => e.id === open.event_id)
           : null;
         if (ev) {
           $("chipEvent").style.display = "inline-flex";
-          $("chipEvent").textContent = `R3 事件：${ev.label}`;
+          $("chipEvent").textContent = `第 3 轮市场事件：${ev.label}`;
           $("chipEvent").title = ev.desc || "";
           $("chipEvent").style.borderColor = "color-mix(in srgb, var(--tv-warn) 55%, var(--tv-border))";
           $("chipEvent").style.background = "color-mix(in srgb, var(--tv-warn) 10%, var(--tv-surface))";
@@ -481,13 +500,13 @@
         const lr = STATE.lastRanks;
         if (lr && lr.tech && lr.tech.rank > 0) {
           const parts = [];
-          parts.push(`Tech：第 ${lr.tech.rank} / ${lr.tech.total}`);
+          parts.push(`技术指标：第 ${lr.tech.rank} / ${lr.tech.total}`);
           const cities = (t.opened_cities || []).filter((c) => lr.byCity && lr.byCity[c]);
           for (const c of cities) {
             const x = lr.byCity[c];
             if (!x) continue;
-            const fitTxt = x.fit && x.fit.rank > 0 ? `Fit 第 ${x.fit.rank} / ${x.fit.total}` : "Fit —";
-            const showTxt = x.show && x.show.rank > 0 ? `Show 第 ${x.show.rank} / ${x.show.total}` : "Show —";
+            const fitTxt = x.fit && x.fit.rank > 0 ? `理解用户 第 ${x.fit.rank} / ${x.fit.total}` : "理解用户 —";
+            const showTxt = x.show && x.show.rank > 0 ? `宣传展示 第 ${x.show.rank} / ${x.show.total}` : "宣传展示 —";
             parts.push(`${c}：${fitTxt}，${showTxt}`);
           }
           $("lastRanksText").textContent = parts.join("；");
@@ -512,8 +531,8 @@
           ? META.events.find((e) => e.id === r.event_id)
           : null;
         const hintParts = [`本轮可用资金 ${fmt(STATE.effectiveAvailable)} 万`];
-        if (r.spend_cap_multiplier !== 1) hintParts.push(`支出上限系数 ×${r.spend_cap_multiplier.toFixed(2)}`);
-        if (evt) hintParts.push(`突发事件：${evt.label}（${evt.desc}）`);
+        if (r.spend_cap_multiplier !== 1) hintParts.push(`本轮可动用预算系数 ×${r.spend_cap_multiplier.toFixed(2)}`);
+        if (evt) hintParts.push(`市场事件：${evt.label}（${evt.desc}）`);
         $("decisionHint").textContent = hintParts.join(" · ");
 
         makeRouteOptions();
@@ -536,7 +555,7 @@
         $("declaration").value = STATE.submission?.declaration ?? (STATE.prefillDeclaration || "");
         declarationHint();
         syncSums();
-        $("techHint").textContent = "提示：技术投入过高可能出现边际递减；均衡规划更稳。";
+        $("techHint").textContent = "提示：技术指标投入过高容易出现边际收益递减；与理解用户/宣传展示组合推进更稳。";
       }
 
       function routeLabel(id) {
@@ -567,7 +586,7 @@
           $("cashflowSection").style.display = "block";
           $("cashflowKv").innerHTML = `
             <dt>本轮可用资金上限</dt><dd>${fmt(cf.cap)} 万</dd>
-            <dt>本轮总支出（含切换/开城）</dt><dd>${fmt(cf.paid)} 万</dd>
+            <dt>本轮总支出（含战略调整与新市场拓展）</dt><dd>${fmt(cf.paid)} 万</dd>
             <dt>本轮结余（进入储备）</dt><dd>${fmt(cf.reserved)} 万</dd>
             <dt>储备利息到账（+15%）</dt><dd>${fmt(cf.interest)} 万</dd>
             <dt>固定追加</dt><dd>${fmt(cf.grant)} 万</dd>
@@ -582,14 +601,14 @@
         if (snap.routeCrowd) {
           const rc = snap.routeCrowd;
           const crowdRow = (() => {
-            if (rc.level === "blue_ocean") return { cls: "good", text: "赛道状态：蓝海（几乎不吃拥挤惩罚）。" };
-            if (rc.level === "normal") return { cls: "info", text: "赛道状态：正常（拥挤惩罚不明显）。" };
-            if (rc.level === "crowded") return { cls: "warn", text: "赛道状态：拥挤（会吃到拥挤惩罚，拿关注更难）。" };
-            return { cls: "bad", text: "赛道状态：非常拥挤（拥挤惩罚强，注意力被严重稀释）。" };
+            if (rc.level === "blue_ocean") return { cls: "good", text: "同打法下竞争对手很少，市场声量更容易向你们集中。" };
+            if (rc.level === "normal") return { cls: "info", text: "同打法下竞争正常，对你们的市场声量影响不大。" };
+            if (rc.level === "crowded") return { cls: "warn", text: "同打法下竞争对手偏多，市场声量更分散、更难突围。" };
+            return { cls: "bad", text: "同打法下竞争非常激烈，市场声量会被明显稀释，突围更难。" };
           })();
           const blueRow = rc.hasBlueOceanSomewhere
-            ? { cls: "good", text: "场上存在蓝海赛道。" }
-            : { cls: "warn", text: "场上暂无蓝海赛道。" };
+            ? { cls: "good", text: "场上存在竞争更宽松的细分打法空间。" }
+            : { cls: "warn", text: "场上暂无明显更宽松的细分打法空间。" };
           $("crowdList").innerHTML = `<li class="${crowdRow.cls}">${crowdRow.text}</li><li class="${blueRow.cls}">${blueRow.text}</li>`;
           $("crowdSection").style.display = "block";
         } else {
@@ -623,12 +642,12 @@
           pane.dataset.city = c;
           pane.innerHTML = `
             <div class="stat-grid">
-              <div class="stat-cell sm"><div class="lbl">Fit</div><div class="val">${fmt2(d.fitAfter)}<small class="muted" style="font-size:11px"> ${signed(d.deltaFit)}</small></div></div>
-              <div class="stat-cell sm"><div class="lbl">Show</div><div class="val">${fmt2(d.showAfter)}<small class="muted" style="font-size:11px"> ${signed(d.deltaShow)}</small></div></div>
-              <div class="stat-cell sm"><div class="lbl">城内排名</div><div class="val">Fit 第 ${d.fitRank > 0 ? d.fitRank : "—"} · Show 第 ${d.showRank > 0 ? d.showRank : "—"}</div></div>
-              <div class="stat-cell sm"><div class="lbl">消费者份额</div><div class="val">${pct(d.rawShare)}</div></div>
-              <div class="stat-cell sm"><div class="lbl">城市关注天花板</div><div class="val">${pct(d.ceiling)}</div></div>
-              <div class="stat-cell sm"><div class="lbl">本城关注度</div><div class="val">${fmt(d.attentionRaw)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">理解用户</div><div class="val">${fmt2(d.fitAfter)}<small class="muted" style="font-size:11px"> ${signed(d.deltaFit)}</small></div></div>
+              <div class="stat-cell sm"><div class="lbl">宣传展示</div><div class="val">${fmt2(d.showAfter)}<small class="muted" style="font-size:11px"> ${signed(d.deltaShow)}</small></div></div>
+              <div class="stat-cell sm"><div class="lbl">城内排名</div><div class="val">理解用户 第 ${d.fitRank > 0 ? d.fitRank : "—"} · 宣传展示 第 ${d.showRank > 0 ? d.showRank : "—"}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本城用户心智份额</div><div class="val">${pct(d.rawShare)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本城可触达声量上限</div><div class="val">${pct(d.ceiling)}</div></div>
+              <div class="stat-cell sm"><div class="lbl">本城市场声量</div><div class="val">${fmt(d.attentionRaw)}</div></div>
             </div>
           `;
           body.appendChild(pane);
@@ -638,9 +657,9 @@
 
         // 参赛端反馈去“术语/数值化”：仅保留名次信息，其它用程度与叙事表达。
         if (snap.rank <= 3) S.push(`本轮进入前三（第 ${snap.rank}）。建议下一轮先“稳住打法”：继续加大你们最有效的一项投入，别频繁大改方向。`);
-        if (snap.hotpulse > 0) S.push("本轮热度更高。建议下一轮把一部分预算从“扩声量”挪回“补基础”（技术/用户匹配二选一强化），让热度更稳。");
-        if (snap.deltaTech >= 0.8) S.push("技术推进较快。建议下一轮继续保持研发投入的强度，避免突然减速。");
-        if (snap.fBonus >= 1.06) S.push("用户匹配在变好。建议下一轮把用户匹配投入集中在你们最重要的经营城市，少撒网。");
+        if (snap.hotpulse > 0) S.push("本轮市场热度更高。建议下一轮把一部分预算从“扩声量”挪回“补底盘”（强化技术指标或理解用户，二选一），让增长更稳。");
+        if (snap.deltaTech >= 0.8) S.push("技术指标提升较快。建议下一轮继续保持对研发与产品落地的投入强度，避免突然减速。");
+        if (snap.fBonus >= 1.06) S.push("理解用户在变好。建议下一轮把“理解用户”相关投入集中在最重要的城市，少撒网。");
         if (snap.mCrowd >= 1.2 && snap.route === "PATHFINDER") S.push("路线红利对你们有利。建议下一轮趁势加大在核心城市的投入，把优势扩大。");
         for (const c of CITY_IDS) {
           if (snap.cities[c].ceiling >= 0.80) {
@@ -648,22 +667,22 @@
           }
         }
 
-        if (snap.mCrowd < 0.9 && snap.route === "PATHFINDER") W.push("同路线竞争变强。建议下一轮更聚焦：把预算集中到一个主城/一项主方向，避免摊薄。");
-        if (snap.bqi < 1.0 && snap.bqi > 0.85) W.push("观感偏挑剔。建议下一轮补一项短板：技术/用户/展示选一个加大投入，别三项都平均。");
-        if (snap.investShares.show > 0.6) W.push("宣传占比偏高。建议下一轮适当收一点宣传，把预算挪去技术或用户匹配，让底盘更稳。");
+        if (snap.mCrowd < 0.9 && snap.route === "PATHFINDER") W.push("同战略路线上的竞争变强。建议下一轮更聚焦：把预算集中到一个核心市场或一个主方向，避免摊薄。");
+        if (snap.bqi < 1.0 && snap.bqi > 0.85) W.push("市场观感偏挑剔。建议下一轮补一项短板：技术指标 / 理解用户 / 宣传展示 选一项重点加强，别三项都平均。");
+        if (snap.investShares.show > 0.6) W.push("宣传展示占比偏高。建议下一轮适当收敛声量投放，把预算更多放到技术指标或理解用户，让底盘更稳。");
         for (const c of CITY_IDS) {
           if (snap.cities[c].rawShare < 0.05 && snap.cities[c].invFit + snap.cities[c].invShow > 0) {
             W.push(`${c} 这座城回报偏弱。建议下一轮减少该城投入，把预算集中到更有反馈的城市。`);
           }
         }
 
-        if (snap.bqi <= 0.85) B.push("观感偏危险。建议下一轮少折腾：收缩城市、集中预算，优先把技术或用户匹配拉起来。");
-        if (snap.deltaTech < 0 || (snap.tech < 3 && snap.techIEff < 1)) B.push("技术推进感不足。建议下一轮明显加大研发投入，并减少分城分散投入。");
-        if (snap.techIEff < snap.techInvestRaw * 0.35) B.push("研发投入效率偏低。建议下一轮降低无效的超大研发投入，把预算分一部分去用户匹配或展示，形成更稳的组合。");
+        if (snap.bqi <= 0.85) B.push("市场观感偏危险。建议下一轮少折腾：收缩城市、集中预算，优先把技术指标或理解用户拉起来。");
+        if (snap.deltaTech < 0 || (snap.tech < 3 && snap.techIEff < 1)) B.push("技术指标提升不足。建议下一轮明显加大研发与产品侧投入，并减少分城分散。");
+        if (snap.techIEff < snap.techInvestRaw * 0.35) B.push("研发转化效率偏低。建议下一轮降低无效的超大技术指标投入，把预算分一部分去理解用户或宣传展示，形成更稳的组合。");
         for (const c of CITY_IDS) {
           const d = snap.cities[c];
           if (d.invShow > 0 && d.showRank <= 1 && d.showAfter >= 9.5) {
-            B.push(`${c} 的宣传过猛，可能反感。建议下一轮降低该城宣传投入，把预算挪去技术或用户匹配。`);
+            B.push(`${c} 的宣传展示过猛，可能引发反感。建议下一轮降低该城宣传展示投入，把预算挪到技术指标或理解用户。`);
           }
         }
 
@@ -684,16 +703,16 @@
           const v = Number(snap.bqi ?? 1);
           if (v >= 1.08) return { cls: "good", lvl: "强势", text: "整体口碑偏积极：市场更愿意相信你们。" };
           if (v >= 0.98) return { cls: "info", lvl: "稳健", text: "整体口碑正常：大家能理解你们在做什么。" };
-          if (v >= 0.88) return { cls: "warn", lvl: "偏冷", text: "整体口碑偏冷：常见原因是宣传口号与资金分配不够匹配，或投入比较分散。" };
+          if (v >= 0.88) return { cls: "warn", lvl: "偏冷", text: "整体口碑偏冷：常见原因是产品主张与市场沟通、资金配置不够一致，或投入较分散。" };
           return { cls: "bad", lvl: "告急", text: "整体口碑偏危险：市场更容易质疑。" };
         })();
         const ruleLabel = (k) => ({
-          techLastThird: "技术掉队",
-          fitLastThird: "用户脱节",
-          marketingOver: "宣传反噬",
+          techLastThird: "技术指标掉队",
+          fitLastThird: "理解用户脱节",
+          marketingOver: "宣传展示反噬",
           allRound: "稳扎稳打",
-          declarationReward: "口号加分",
-          declarationDeviationMinor: "口号脱节",
+          declarationReward: "产品主张一致",
+          declarationDeviationMinor: "产品主张偏离",
         }[k] || "市场反馈");
         const strengthByDelta = (d) => {
           const x = Math.abs(Number(d) || 0);
@@ -705,17 +724,17 @@
         const ruleAdvice = (k, sign) => {
           // sign: +1 加分，-1 减分；只给可执行建议，不抛术语与数值
           const bad = {
-            techLastThird: "下一轮建议明显加大研发投入，并减少分散投入。",
-            fitLastThird: "下一轮建议加大用户匹配投入，并集中在主经营城市。",
-            marketingOver: "下一轮建议适当降低宣传投入，把预算挪去技术或用户匹配。",
-            declarationDeviationMinor: "宣传口号与资金分配不匹配。",
+            techLastThird: "下一轮建议明显加大技术指标相关投入，并减少分散投入。",
+            fitLastThird: "下一轮建议加大理解用户相关投入，并集中在主经营城市。",
+            marketingOver: "下一轮建议适当降低宣传展示投入，把预算挪到技术指标或理解用户。",
+            declarationDeviationMinor: "产品主张与资金配置不匹配。",
           };
           const good = {
-            allRound: "建议保持均衡：技术、用户、展示三项不要明显偏科。",
-            declarationReward: "宣传口号与资金分配匹配。",
+            allRound: "建议保持均衡：技术指标、理解用户、宣传展示三项不要明显偏科。",
+            declarationReward: "产品主张与资金配置一致。",
           };
           const pick = sign < 0 ? bad : good;
-          return pick[k] || (sign < 0 ? "下一轮建议收敛目标，选一个最关键的问题优先解决，并让宣言与投入对齐。" : "下一轮建议把这点优势继续做扎实，形成连续两轮的稳定表现。");
+          return pick[k] || (sign < 0 ? "下一轮建议收敛目标，先解决最关键问题，让产品主张与市场投入一致。" : "下一轮建议把优势继续做扎实，形成连续两轮的稳定表现。");
         };
         const contribs = Array.isArray(snap.bqiContribs) ? snap.bqiContribs : [];
         // 1) 口碑与宣传问题：规则项 + “需要注意的问题”合并（去重后展示）
@@ -738,8 +757,8 @@
           .map((t) => `<li class="warn"><strong>需要注意</strong>：${t}</li>`)
           .join("");
         const prHtml =
-          `<li class="${vibe.cls}"><strong>口碑等级：${vibe.lvl}</strong> — ${vibe.text}</li>` +
-          (prRuleHtml || `<li class="info">本轮未出现明显的“口号/宣传”相关加减分。</li>`) +
+          `<li class="${vibe.cls}"><strong>品牌口碑：${vibe.lvl}</strong> — ${vibe.text}<br/><span class="muted tv-bqi-hint">说明：品牌口碑综合反映市场对你“说到做到”、品牌叙事与资金配置是否一致的整体观感。</span></li>` +
+          (prRuleHtml || `<li class="info">本轮未出现明显的“产品主张/宣传展示”相关加减分。</li>`) +
           (prTips || "");
 
         // 2) 公司治理与发展：排名 + 规则项 + “优势”合并（去重后展示）
@@ -757,7 +776,7 @@
           .filter((t) => !govRuleHtml.includes(t))
           .map((t) => `<li class="good"><strong>做得对</strong>：${t}</li>`)
           .join("");
-        const govHtml = rankItem + (govRuleHtml || `<li class="info">本轮未出现额外的治理类加减分条目。</li>`) + (govTips || "");
+        const govHtml = rankItem + (govRuleHtml || `<li class="info">本轮未出现额外的经营类加减分条目。</li>`) + (govTips || "");
 
         $("prList").innerHTML = prHtml;
         $("govList").innerHTML = govHtml;
@@ -772,16 +791,16 @@
           pathfinder_boom: "独占红利",
           pathfinder_crowd: "扎堆警报",
           marketing_over: "过度营销",
-          declaration_win: "宣言兑现",
-          declaration_miss: "宣言脱节",
+          declaration_win: "主张兑现",
+          declaration_miss: "主张偏离",
           tech_last: "技术垫底",
           fit_last: "用户脱节",
           all_round: "全能玩家",
-          city_debut: "首开新城",
-          route_switch: "路线切换",
+          city_debut: "首进新市场",
+          route_switch: "战略路线调整",
           ceiling_boost: "城市过热",
           rank_top: "登顶冠军",
-          event_r3: "突发事件",
+          event_r3: "第 3 轮市场事件",
         };
         return map[k] || k;
       }
@@ -806,7 +825,7 @@
         } else if (STATE.lastSettled) {
           $("roundHint").textContent = `第 ${STATE.lastSettled.round_no} 轮已结算，等待下一轮开放。`;
         } else {
-          $("roundHint").textContent = `比赛尚未开始，请等待主持开放 R1。`;
+          $("roundHint").textContent = `比赛尚未开始，请等待主持开放第 1 轮。`;
         }
 
         chooseDefaultTab();
@@ -955,7 +974,7 @@
               } else if (STATE.lastSettled) {
                 $("roundHint").textContent = `第 ${STATE.lastSettled.round_no} 轮已结算，等待下一轮开放。`;
               } else {
-                $("roundHint").textContent = `比赛尚未开始，请等待主持开放 R1。`;
+                $("roundHint").textContent = `比赛尚未开始，请等待主持开放第 1 轮。`;
               }
             }
             scheduleNext(jitterMs());
