@@ -12,14 +12,11 @@
       <section class="card card--screen-hero">
         <header class="tv-screen-header">
           <div>
-            <h1 class="tv-screen-title">TechVenture · 会场大屏</h1>
+            <h1 class="tv-screen-title">TechVenture</h1>
           </div>
-          <div>
+          <div class="tv-screen-header-right" aria-label="当前回合信息">
             <p class="tv-screen-meta"><strong id="stageBadge">—</strong></p>
             <p class="tv-screen-updated"><strong id="roundTimer">—</strong></p>
-            <p class="tv-screen-updated" id="eventHint" style="display:none; color: var(--tv-warn); font-weight: 800">本轮事件：—</p>
-            <p class="tv-screen-updated" id="viewHint">当前：三城市场声量分布</p>
-            <p class="tv-screen-updated" id="updated">—</p>
           </div>
         </header>
       </section>
@@ -274,12 +271,13 @@
       }
 
       function formatTickerLine(n) {
+        const monthByRound = (roundNo) => ({ 1: "2月", 2: "5月", 3: "8月", 4: "11月" }[Number(roundNo)] || `第 ${roundNo} 轮`);
         const hl = escHtml(n.headline || "");
         const sub = escHtml(n.body || "");
         if (!sub) {
-          return `<span class="ticker-item"><span class="ticker-hl">【R${n.round_no}】${hl}</span></span>`;
+          return `<span class="ticker-item"><span class="ticker-hl">【${monthByRound(n.round_no)}】${hl}</span></span>`;
         }
-        return `<span class="ticker-item"><span class="ticker-hl">【R${n.round_no}】${hl}</span><span class="ticker-dash"> — </span><span class="ticker-sub">${sub}</span></span>`;
+        return `<span class="ticker-item"><span class="ticker-hl">【${monthByRound(n.round_no)}】${hl}</span><span class="ticker-dash"> — </span><span class="ticker-sub">${sub}</span></span>`;
       }
 
       let lastRoundNo = null;
@@ -304,13 +302,31 @@
         el.textContent = `本轮倒计时：${fmtMMSS(remain)}`;
       }
 
+      function eventDegreeText(eventId) {
+        switch (eventId) {
+          case "pragmaticWave":
+            return "用户偏好明显向“更实用、更落地”侧倾斜：体验稳定性与交付确定性在加速升值。";
+          case "geekWave":
+            return "极客与参数党存在感显著上升：技术底色与指标对比变得更直接，硬核叙事更占优。";
+          case "trendyWave":
+            return "社媒传播速度明显加快：展示与声量更容易出圈，但话题窗口更短、竞争更拥挤。";
+          case "investorBoom":
+            return "资本情绪明显转暖：追加投资的预期更厚，但也会抬高对“增长与兑现”的要求。";
+          case "compliance":
+            return "合规与监管关注度明显上升：对“高曝光、弱产品”的容忍度下降，营销尺度被放大检视。";
+          case "influencerBoom":
+            return "区域流量出现结构性倾斜：热点城市与腰部达人更集中吸走注意力，城市红利在切换。";
+          default:
+            return "赛场出现新的外生扰动，各队需要跟着节奏重排优先级。";
+        }
+      }
+
       function applyFlip() {
         const piesOn = showingPies;
         $("panelPies").classList.toggle("is-active", piesOn);
         $("panelBoard").classList.toggle("is-active", !piesOn);
         $("panelPies").setAttribute("aria-hidden", piesOn ? "false" : "true");
         $("panelBoard").setAttribute("aria-hidden", !piesOn ? "false" : "true");
-        $("viewHint").textContent = piesOn ? "当前：三城市场声量分布" : "当前：累计实时榜单";
       }
 
       setInterval(() => {
@@ -334,21 +350,12 @@
         else if (last) stage = `第 ${last.round_no} 轮已结算`;
         if (settled.length === 4) stage = "全部轮次结束";
         $("stageBadge").textContent = stage;
-        $("updated").textContent = "数据更新：" + new Date().toLocaleTimeString();
         applyFlip();
 
         const evRound = open && open.status === "open" ? open : last;
         const evObj = evRound && evRound.round_no === 3 && evRound.event_id && evRound.event_id !== "none"
           ? (META.events || []).find((e) => e.id === evRound.event_id)
           : null;
-        if (evObj) {
-          $("eventHint").style.display = "block";
-          $("eventHint").textContent = `本轮市场事件：${evObj.label} · ${evObj.desc}`;
-          $("eventHint").title = evObj.desc || "";
-        } else {
-          $("eventHint").style.display = "none";
-          $("eventHint").title = "";
-        }
 
         if (data.timer && data.serverTime) {
           TIMER_END_MS = Date.parse(data.timer.endsAt);
@@ -365,7 +372,13 @@
           for (const p of rep.cityPies || []) for (const s of (p.slices || [])) allTeamIds.push(s.teamId);
           buildTeamColors(allTeamIds);
           $("pieTitle").textContent = `第 ${rep.round_no} 轮 · 三城市场声量结构`;
-          $("pieEvent").textContent = escHtml(rep.eventLabel || "无事件");
+          if (evObj) {
+            $("pieEvent").textContent = `突发事件影响：${eventDegreeText(evObj.id)}`;
+            $("pieEvent").title = evObj.desc || "";
+          } else {
+            $("pieEvent").textContent = escHtml(rep.eventLabel || "无事件");
+            $("pieEvent").title = "";
+          }
           $("pies").innerHTML = rep.cityPies.map(renderPie).join("");
         } else {
           $("pieTitle").textContent = "三城市场声量结构";
@@ -393,7 +406,7 @@
           setMarquee(text);
         }
         $("tickerMeta").textContent = targetNo
-          ? `R${targetNo} 快讯 · 共 ${list.length} 条`
+          ? `${({ 1: "2月", 2: "5月", 3: "8月", 4: "11月" }[Number(targetNo)] || `第 ${targetNo} 轮`)} 快讯 · 共 ${list.length} 条`
           : `快讯 · 共 ${list.length} 条`;
       }
 

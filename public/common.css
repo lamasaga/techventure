@@ -809,15 +809,24 @@ tbody tr:hover td {
 .tv-screen-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px 24px;
+  gap: 10px 18px;
+}
+
+.tv-screen-header-right {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .tv-screen-title {
   font-family: var(--tv-font-display);
   font-weight: 800;
-  font-size: clamp(1.75rem, 4.2vw, 3rem);
+  font-size: clamp(1.45rem, 3.6vw, 2.6rem);
   letter-spacing: -0.04em;
   margin: 0;
   line-height: 1.1;
@@ -845,7 +854,7 @@ tbody tr:hover td {
 }
 
 .tv-body--screen .card--screen-hero {
-  padding: clamp(16px, 2.5vh, 28px) clamp(18px, 2.5vw, 32px);
+  padding: clamp(10px, 1.8vh, 18px) clamp(16px, 2.2vw, 26px);
   margin-bottom: 0;
 }
 
