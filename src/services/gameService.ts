@@ -862,7 +862,6 @@ export function getJudgeData(): {
  * ────────────────────────────────────────────────────────── */
 
 export function seedRoundsIfEmpty(): void {
-  initPersistence();
   const s = getState();
   if (s.rounds.length >= V6.ROUNDS) return;
   const fresh = defaultState();

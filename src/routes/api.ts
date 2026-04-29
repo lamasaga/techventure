@@ -186,8 +186,10 @@ adminRouter.use(requireAdmin);
 adminRouter.get("/state", (_req, res) => {
   seedRoundsIfEmpty();
   const screen = getScreenData();
+  const teams = listTeams();
+  console.log(`[API /admin/state] 返回 ${teams.length} 支队伍`);
   res.json({
-    teams: listTeams(),
+    teams,
     rounds: listRounds(),
     leaderboard: getLeaderboard(),
     roundControl: getRoundControl(),

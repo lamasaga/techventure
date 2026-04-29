@@ -162,10 +162,21 @@
         const r = await fetch("/api" + path, {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           ...opt,
         });
-        const data = await r.json().catch(() => ({}));
+        const text = await r.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = {};
+        }
         if (!r.ok) throw new Error(data.error || r.statusText);
+        // 诊断日志：记录 /admin/state 返回数据的摘要
+        if (path === "/admin/state") {
+          console.log("[api /admin/state] status:", r.status, "typeof:", typeof data, "isArray:", Array.isArray(data), "teams:", data?.teams);
+        }
         return data;
       }
 
@@ -291,29 +302,49 @@
           ADMIN_TIMER_END_MS = null;
         }
         tickAdminTimer();
+
+        // 防御性检查：确保 st.teams 是数组
+        if (!Array.isArray(st.teams)) {
+          console.error("[admin] /admin/state 返回的 teams 不是数组:", st.teams);
+          $("teamErr").textContent = "数据异常：无法读取队伍列表（teams 不是数组）。请查看浏览器控制台。";
+          $("teamRows").innerHTML = `<tr><td colspan="16" style="text-align:center;color:var(--tv-danger)">数据加载异常，请刷新重试</td></tr>`;
+          return;
+        }
+
         const teamsSorted = [...st.teams].sort((a, b) => (b.weighted_total ?? 0) - (a.weighted_total ?? 0));
-        $("teamRows").innerHTML = teamsSorted.map((t, i) => {
-          const fitAvg = avg(t.fit_by_city);
-          const showAvg = avg(t.show_by_city);
-          return `<tr data-team-id="${t.id}" data-team-code="${escHtml(t.team_code)}">
-            <td>${i + 1}</td>
-            <td>${escHtml(t.team_code)}</td>
-            <td><div style="font-weight:600">${escHtml(t.team_name || "—")}</div></td>
-            <td><div class="muted" style="font-size:12px">${escHtml(t.product_name || "—")}</div></td>
-            <td>${escHtml(t.pin || "—")}</td>
-            <td>${escHtml(t.homeCity)}</td>
-            <td>${escHtml(t.opened_cities.join("·"))}</td>
-            <td class="num">${t.budget.toFixed(1)}</td>
-            <td><input type="number" class="inp-add" min="0" step="0.1" placeholder="0" style="width:4.2rem" /></td>
-            <td><button class="secondary btn-apply" style="min-height:28px;padding:3px 10px;font-size:12px">追加</button></td>
-            <td><button class="secondary btn-del" style="min-height:28px;padding:3px 10px;font-size:12px;border-color:color-mix(in srgb, var(--tv-danger) 45%, var(--tv-border)); color: var(--tv-danger)">删除</button></td>
-            <td class="num">${t.tech.toFixed(2)}</td>
-            <td class="num">${fitAvg.toFixed(2)}</td>
-            <td class="num">${showAvg.toFixed(2)}</td>
-            <td class="num">${(t.weighted_total ?? 0).toFixed(2)}</td>
-            <td>${t.last_rank ?? "—"}</td>
-          </tr>`;
-        }).join("");
+        try {
+          $("teamRows").innerHTML = teamsSorted.map((t, i) => {
+            const fitAvg = avg(t.fit_by_city ?? {});
+            const showAvg = avg(t.show_by_city ?? {});
+            const budgetVal = Number.isFinite(t.budget) ? t.budget : 0;
+            const techVal = Number.isFinite(t.tech) ? t.tech : 0;
+            const wtVal = Number.isFinite(t.weighted_total) ? t.weighted_total : 0;
+            return `<tr data-team-id="${t.id}" data-team-code="${escHtml(t.team_code)}">
+              <td>${i + 1}</td>
+              <td>${escHtml(t.team_code)}</td>
+              <td><div style="font-weight:600">${escHtml(t.team_name || "—")}</div></td>
+              <td><div class="muted" style="font-size:12px">${escHtml(t.product_name || "—")}</div></td>
+              <td>${escHtml(t.pin || "—")}</td>
+              <td>${escHtml(t.homeCity || "—")}</td>
+              <td>${escHtml((t.opened_cities || []).join("·"))}</td>
+              <td class="num">${budgetVal.toFixed(1)}</td>
+              <td><input type="number" class="inp-add" min="0" step="0.1" placeholder="0" style="width:4.2rem" /></td>
+              <td><button class="secondary btn-apply" style="min-height:28px;padding:3px 10px;font-size:12px">追加</button></td>
+              <td><button class="secondary btn-del" style="min-height:28px;padding:3px 10px;font-size:12px;border-color:color-mix(in srgb, var(--tv-danger) 45%, var(--tv-border)); color: var(--tv-danger)">删除</button></td>
+              <td class="num">${techVal.toFixed(2)}</td>
+              <td class="num">${fitAvg.toFixed(2)}</td>
+              <td class="num">${showAvg.toFixed(2)}</td>
+              <td class="num">${wtVal.toFixed(2)}</td>
+              <td>${t.last_rank ?? "—"}</td>
+            </tr>`;
+          }).join("");
+          $("teamErr").textContent = "";
+        } catch (renderErr) {
+          console.error("[admin] 渲染队伍表格失败:", renderErr);
+          $("teamErr").textContent = "渲染表格失败: " + (renderErr?.message || String(renderErr));
+          $("teamRows").innerHTML = `<tr><td colspan="16" style="text-align:center;color:var(--tv-danger)">渲染失败，请查看浏览器控制台</td></tr>`;
+          return;
+        }
         bindPatchOnce();
 
         $("roundRows").innerHTML = st.rounds.map((r) => {
@@ -400,7 +431,6 @@
           $("loginCard").style.display = "none";
           $("main").style.display = "block";
           META = await api("/public/meta");
-          fillEventSelect();
           await load();
         } catch { /* stay on login */ }
       })();

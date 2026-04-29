@@ -170,14 +170,25 @@ function atomicWriteFile(path: string, data: string): void {
 }
 
 export function initPersistence(): void {
+  // 防止重复初始化：如果 state 已存在，直接返回
+  if (state) return;
+
   const path = getStatePath();
   const dir = dirname(path);
   mkdirSync(dir, { recursive: true });
   if (existsSync(path)) {
     try {
-      const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<AppState> & { schema?: string };
+      const raw = readFileSync(path, "utf8");
+      if (!raw || raw.trim().length === 0) {
+        console.warn("[initPersistence] 数据文件为空，使用默认状态");
+        state = defaultState();
+        persist();
+        return;
+      }
+      const parsed = JSON.parse(raw) as Partial<AppState> & { schema?: string };
       if (parsed.schema !== STATE_SCHEMA) {
         // 旧版本 schema，不兼容：直接重置
+        console.warn(`[initPersistence] schema 不匹配 (${parsed.schema} !== ${STATE_SCHEMA})，重置状态`);
         state = defaultState();
         persist();
         return;
@@ -211,12 +222,17 @@ export function initPersistence(): void {
         if (typeof t.pending_follow_on !== "number") t.pending_follow_on = 0;
         if (typeof t.weighted_total !== "number") t.weighted_total = 0;
         if (typeof t.attention_total !== "number") t.attention_total = 0;
+        // 兜底：budget 必须是数字
+        if (typeof t.budget !== "number" || Number.isNaN(t.budget)) t.budget = V6.SEED;
       }
-    } catch {
+      console.log(`[initPersistence] 加载成功：${state.teams.length} 支队伍，${state.rounds.length} 轮次`);
+    } catch (err) {
+      console.error("[initPersistence] 加载数据文件失败，使用默认状态", err);
       state = defaultState();
       persist();
     }
   } else {
+    console.log("[initPersistence] 数据文件不存在，创建默认状态");
     state = defaultState();
     persist();
   }
